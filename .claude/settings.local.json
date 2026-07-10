@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(sed -i '' 's#localhost:5173#localhost:5174#' \"/private/tmp/claude-501/-Users-bharatkhanawalia-Documents-Bharat-Coding-Work-Development-Projects-capoflow/11cb0bb9-b7cf-4e5a-a8e1-322cc04d2928/scratchpad/verify2.mjs\")",
+      "Bash(node \"/private/tmp/claude-501/-Users-bharatkhanawalia-Documents-Bharat-Coding-Work-Development-Projects-capoflow/11cb0bb9-b7cf-4e5a-a8e1-322cc04d2928/scratchpad/verify2.mjs\")",
+      "Bash(cp \"/private/tmp/claude-501/-Users-bharatkhanawalia-Documents-Bharat-Coding-Work-Development-Projects-capoflow/11cb0bb9-b7cf-4e5a-a8e1-322cc04d2928/scratchpad/verify2.mjs\" ./_verify2.mjs)",
+      "Bash(node ./_verify2.mjs)",
+      "Bash(rm -f ./_verify2.mjs)",
+      "Bash(node ./_verify3.mjs)",
+      "Bash(rm -f ./_verify3.mjs)",
+      "Bash(pkill -f \"vite\")",
+      "Bash(cd \"/Users/bharatkhanawalia/.claude/projects/-Users-bharatkhanawalia-Documents-Bharat-Coding-Work-Development-Projects-capoflow/memory/\")",
+      "Bash(ls -la)",
+      "Bash(cat MEMORY.md)",
+      "WebSearch",
+      "WebFetch(domain:www.theamericanguitaracademy.com)",
+      "Bash(sed -i '' 's#localhost:5174#localhost:5173#' ./_verify4.mjs)",
+      "Bash(node ./_verify4.mjs)",
+      "Bash(rm -f ./_verify4.mjs)",
+      "Bash(npm install *)",
+      "Bash(node -p \"require\\('./node_modules/@mediapipe/tasks-vision/package.json'\\).version\")",
+      "Bash(node -p \"require\\('./node_modules/react-webcam/package.json'\\).version\")",
+      "Bash(grep -iA3 \"screenshot\\\\|puppeteer\\\\|scripts\")",
+      "Bash(node scripts/verify.mjs)"
+    ]
+  }
+}
