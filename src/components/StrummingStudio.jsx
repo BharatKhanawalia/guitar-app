@@ -1,6 +1,17 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { playChuck } from '../lib/audioEngine'
+import {
+  playChuck,
+  playAcousticStrum,
+  playStringMute,
+  playThumbSlap,
+} from '../lib/audioEngine'
+
+// Common chords for the "Play Chord" dropdown.
+const STRUM_CHORDS = [
+  'G', 'C', 'D', 'A', 'E', 'F', 'Am', 'Em', 'Dm', 'Bm',
+  'G7', 'C7', 'D7', 'E7', 'A7', 'Cmaj7', 'Fmaj7', 'Am7', 'Em7', 'Dm7',
+]
 
 /**
  * StrummingStudio — its own top-level tab.
@@ -14,17 +25,21 @@ import { playChuck } from '../lib/audioEngine'
  * accented dead-string hit; also percussive, treated like a down stroke).
  */
 
-// sub = stepsPerBeat: 2 = eighth-note grid, 4 = sixteenth-note grid.
+// Every pattern is authored on the SAME 16th-note grid the Custom Studio uses,
+// so 100 BPM plays identically in both. `sub: 2` (eighth-note) patterns are
+// expanded to 16ths at load (see the normalize loop below); patterns given an
+// exact 16th layout are marked `sub: 4`.
 const LIBRARY = {
   Common: [
-    // The single most-used acoustic strum (Horse With No Name, Riptide, …).
-    { name: 'D DU UDU', seq: ['D', '', 'D', 'U', '', 'U', 'D', 'U'], sub: 2, feel: 'the "every song" strum' },
-    // Requested — spells D UU D UU D DU across the bar.
-    { name: 'D UUD UUD DU', seq: ['D', '', 'U', 'U', 'D', '', 'U', 'U', 'D', '', 'D', 'U', '', '', '', ''], sub: 4, feel: 'rolling 16th groove' },
-    // Requested — D U D · D D U D.
-    { name: 'DUD DDUD', seq: ['D', 'U', 'D', '', 'D', 'D', 'U', 'D'], sub: 2, feel: 'driving pop/rock' },
+    // Exact user layout: D · D U · U D U
+    { name: 'D DU UDU', seq: ['D', '', 'D', 'U', '', 'U', 'D', 'U'], sub: 4, feel: 'the "every song" strum' },
+    // Exact user layout: D · · U · U D · · U · U D · D U
+    { name: 'D UUD UUD DU', seq: ['D', '', '', 'U', '', 'U', 'D', '', '', 'U', '', 'U', 'D', '', 'D', 'U'], sub: 4, feel: 'rolling 16th groove' },
+    // Exact user layout: D · U · D · · D · D U · D · · ·
+    { name: 'DUD DDUD', seq: ['D', '', 'U', '', 'D', '', '', 'D', '', 'D', 'U', '', 'D', '', '', ''], sub: 4, feel: 'driving pop/rock' },
     { name: 'Down–Up 8ths', seq: ['D', 'U', 'D', 'U', 'D', 'U', 'D', 'U'], sub: 2, feel: 'steady alternating driver' },
-    { name: 'Folk / Ballad', seq: ['D', 'D', 'U', '', 'U', 'D', 'U', ''], sub: 2, feel: 'gentle, flowing' },
+    // Exact user layout: D · D U · U D U
+    { name: 'Folk / Ballad', seq: ['D', '', 'D', 'U', '', 'U', 'D', 'U'], sub: 4, feel: 'gentle, flowing' },
   ],
   Uncommon: [
     // Bob Marley — "One Love" skank.
@@ -51,6 +66,17 @@ const LIBRARY = {
   ],
 }
 
+// One grid for everything: 4 steps per beat (16th notes). Eighth-note presets
+// are expanded 1→2 cells so their rhythm is preserved but the timebase matches
+// the Custom Studio exactly (this is the fix for "presets play slower than custom").
+const SUB = 4
+for (const cat of Object.values(LIBRARY)) {
+  for (const p of cat) {
+    if (p.sub === 2) p.seq = p.seq.flatMap((c) => [c, ''])
+    p.sub = SUB
+  }
+}
+
 const CATEGORIES = Object.keys(LIBRARY)
 const CAT_COLOR = {
   Common: 'from-accent-400 to-accent-600',
@@ -72,19 +98,78 @@ function Stroke({ s }) {
 /* left→right at the set BPM, firing muted chucks in exact tempo.       */
 /* ------------------------------------------------------------------ */
 
-// Cycle order for a pad tap.
-const NEXT_STATE = { '-': 'D', D: 'U', U: '-' }
+// Cycle order for a pad tap:  Rest → Down → Up → Muted chuck → Rest.
+const NEXT_STATE = { '-': 'D', D: 'U', U: 'X', X: '-' }
 
-// Available grid lengths. 16+ wrap onto two rows.
-const SEQ_SIZES = [4, 8, 12, 16, 24, 32]
+// Custom grid can be any length in this range (rows of 16 = one bar each).
+const MIN_STEPS = 4
+const MAX_STEPS = 64
 
 function padVisual(v) {
   if (v === 'D') return { glyph: '↓', text: 'text-accent-300', ring: 'border-accent-400/60', fill: 'bg-accent-500/20' }
   if (v === 'U') return { glyph: '↑', text: 'text-mint-300', ring: 'border-mint-400/60', fill: 'bg-mint-500/15' }
+  if (v === 'X') return { glyph: '✕', text: 'text-rose-300', ring: 'border-rose-400/60', fill: 'bg-rose-500/15' }
   return { glyph: '—', text: 'text-white/25', ring: 'border-white/10', fill: 'bg-white/[0.03]' }
 }
 
-function CustomSequencer() {
+/**
+ * Human-feel articulation for the custom sequencer.
+ *
+ * A real guitarist doesn't execute every stroke identically. Emphasis, how many
+ * strings the hand catches, note length and micro-timing all shift with the
+ * surrounding rhythm — that variation is what makes a sequence groove instead of
+ * sounding like a metronome. This is DETERMINISTIC: it's driven by the stroke's
+ * metric position and its spacing to the neighbouring strokes, never by random
+ * numbers. Same pattern → same performance, every time.
+ *
+ * Rules (matching how the hand actually moves):
+ *  · A down after space (bar start / a rest) → full 6-string, strong, rings on.
+ *  · A down crowded between strokes → squeezed: lower 3 strings, light, short —
+ *    it "blends" between its neighbours (the 3rd D in "D DU UDU").
+ *  · Upstrokes are always lighter and catch only the top strings.
+ *  · Metric accent: beats > off-beats (&) > inner 16ths (e/a).
+ *  · Off-beat 16ths sit a hair late (laid-back human feel).
+ */
+function humanize(steps, i, sub = 4) {
+  const n = steps.length
+  let prevIdx = -1
+  for (let p = i - 1; p >= 0; p--) if (steps[p] !== '-') { prevIdx = p; break }
+  let nextIdx = -1
+  for (let q = i + 1; q < n; q++) if (steps[q] !== '-') { nextIdx = q; break }
+  const prevGap = prevIdx === -1 ? 99 : i - prevIdx
+  const nextGap = nextIdx === -1 ? 99 : nextIdx - i
+  const prevStroke = prevIdx === -1 ? null : steps[prevIdx]
+  const nextStroke = nextIdx === -1 ? null : steps[nextIdx]
+
+  const inBeat = i % sub // 0=beat, 2=&, 1/3=inner 16ths
+  const metric = inBeat === 0 ? 1.0 : inBeat === 2 ? 0.86 : 0.72
+  // laid-back micro-timing on the off-beat subdivisions (seconds)
+  const time = inBeat === 1 || inBeat === 3 ? 0.011 : inBeat === 2 ? 0.004 : 0
+
+  const stroke = steps[i]
+  // NB: no `sustain` override — the strings ring out naturally. "Brief" comes from
+  // the fast sweep (small `spread`), not from a short note or choking.
+  if (stroke === 'U') {
+    const ghost = prevGap <= 1 // an up hard on the heels of another stroke
+    return { kind: 'up', velocity: metric * (ghost ? 0.52 : 0.62), strings: 3, spread: 0.008, time }
+  }
+  if (stroke === 'X') {
+    return { kind: 'x', velocity: metric * 0.85, strings: prevGap <= 1 ? 3 : 4, time }
+  }
+  // Downstroke articulation. Rhythm downs are voiced AS LIGHT AS the upstrokes
+  // (matched velocity, top strings only) so they don't dominate. Strokes squeezed
+  // between others get lighter and a touch faster still.
+  const sandwiched = prevGap <= 1 && nextGap <= 1 && (prevStroke === 'U' || nextStroke === 'U')
+  if (sandwiched) {
+    return { kind: 'down', velocity: metric * 0.5, strings: 3, spread: 0.008, time }
+  }
+  return { kind: 'down', velocity: metric * 0.62, strings: 4, spread: 0.011, time }
+}
+
+// Dev-only handle so the humanization logic can be unit-checked from tests.
+if (import.meta.env?.DEV && typeof window !== 'undefined') window.__humanize = humanize
+
+function CustomSequencer({ mode, chord }) {
   const [count, setCount] = useState(8)
   const [steps, setSteps] = useState(() => Array(8).fill('-'))
   const [bpm, setBpm] = useState(100)
@@ -92,14 +177,16 @@ function CustomSequencer() {
   const [beat, setBeat] = useState(-1)
   const timer = useRef(null)
 
-  // Sixteenth-note grid: every 4 pads = one beat (16 pads = a full bar).
-  const sub = 4
+  // Sixteenth-note grid: every 4 pads = one beat (16 pads = a full bar). SUB is
+  // the SAME grid the presets use, so BPM is identical across both players.
+  const sub = SUB
   const stepMs = ((60 / bpm) / sub) * 1000
-  // Up to 16 pads per row; longer patterns wrap onto a second row.
-  const columns = count <= 16 ? count : Math.ceil(count / 2)
+  // Rows of 16 (one bar each); longer patterns wrap onto more rows.
+  const columns = Math.min(count, 16)
   const padText = columns >= 16 ? 'text-sm' : columns >= 12 ? 'text-lg' : 'text-2xl'
 
-  const resize = (n) => {
+  const resize = (raw) => {
+    const n = Math.max(MIN_STEPS, Math.min(MAX_STEPS, Number(raw) || MIN_STEPS))
     setPlaying(false)
     setCount(n)
     setSteps((prev) => {
@@ -121,14 +208,16 @@ function CustomSequencer() {
     setSteps(Array(count).fill('-'))
   }
 
-  // Keep a live ref of steps so the running interval always reads the latest
-  // pattern (edit pads while it plays) without restarting the timer.
+  // Keep live refs so the running interval always reads the latest pattern and
+  // sound settings (edit while it plays) without restarting the timer.
   const stepsRef = useRef(steps)
-  useEffect(() => {
-    stepsRef.current = steps
-  }, [steps])
+  useEffect(() => { stepsRef.current = steps }, [steps])
+  const soundRef = useRef({ mode, chord })
+  useEffect(() => { soundRef.current = { mode, chord } }, [mode, chord])
 
-  // Playhead + audio. Re-seeds whenever tempo/pattern length changes.
+  // Playhead + audio. Each active step is performed with human-feel articulation
+  // (see humanize): emphasis, string count, length and micro-timing adapt to the
+  // surrounding rhythm instead of every stroke being an identical full sweep.
   useEffect(() => {
     if (!playing) {
       clearInterval(timer.current)
@@ -140,8 +229,17 @@ function CustomSequencer() {
       const i = b % count
       setBeat(i)
       const v = stepsRef.current[i]
-      if (v === 'D') playChuck({ up: false, velocity: 0.95 })
-      else if (v === 'U') playChuck({ up: true, velocity: 0.8 })
+      if (v && v !== '-') {
+        const a = humanize(stepsRef.current, i, sub)
+        const { mode: m, chord: c } = soundRef.current
+        if (m === 'chord') {
+          if (a.kind === 'x') playStringMute({ velocity: a.velocity, time: a.time })
+          else playAcousticStrum(c, { up: a.kind === 'up', velocity: a.velocity, strings: a.strings, sustain: a.sustain, spread: a.spread, time: a.time })
+        } else {
+          if (a.kind === 'x') playThumbSlap({ velocity: a.velocity, time: a.time })
+          else playChuck({ up: a.kind === 'up', velocity: a.velocity, count: a.strings, time: a.time })
+        }
+      }
       b++
     }
     fire()
@@ -164,7 +262,9 @@ function CustomSequencer() {
       <p className="text-xs text-white/40 mb-5">
         Tap a pad to cycle <span className="text-accent-300 font-semibold">↓ Down</span> →{' '}
         <span className="text-mint-300 font-semibold">↑ Up</span> →{' '}
-        <span className="text-white/40 font-semibold">— Rest</span>. Hit play and build your own groove.
+        <span className="text-rose-300 font-semibold">✕ Chuck</span> →{' '}
+        <span className="text-white/40 font-semibold">— Rest</span>. Strokes are performed with real
+        human phrasing — emphasis &amp; feel adapt to the rhythm.
       </p>
 
       {/* Transport */}
@@ -188,21 +288,32 @@ function CustomSequencer() {
           />
         </div>
 
-        {/* Step-count selector */}
+        {/* Step-count stepper — dial in any length from 4 to 64. */}
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-white/40 mr-1">Steps</span>
           <div className="flex items-center gap-1 bg-white/5 rounded-xl p-1">
-            {SEQ_SIZES.map((n) => (
-              <button
-                key={n}
-                onClick={() => resize(n)}
-                className={`px-2.5 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-                  count === n ? 'bg-accent-500/80 text-white' : 'text-white/50 hover:text-white/80'
-                }`}
-              >
-                {n}
-              </button>
-            ))}
+            <button
+              onClick={() => resize(count - 1)}
+              disabled={count <= MIN_STEPS}
+              className="w-7 h-7 grid place-items-center rounded-lg bg-white/5 hover:bg-white/15 font-mono disabled:opacity-30"
+            >
+              −
+            </button>
+            <input
+              type="number"
+              min={MIN_STEPS}
+              max={MAX_STEPS}
+              value={count}
+              onChange={(e) => resize(parseInt(e.target.value, 10))}
+              className="w-12 bg-transparent text-center font-mono font-bold tabular-nums outline-none"
+            />
+            <button
+              onClick={() => resize(count + 1)}
+              disabled={count >= MAX_STEPS}
+              className="w-7 h-7 grid place-items-center rounded-lg bg-white/5 hover:bg-white/15 font-mono disabled:opacity-30"
+            >
+              +
+            </button>
           </div>
         </div>
 
@@ -257,11 +368,33 @@ export default function StrummingStudio() {
   const [playing, setPlaying] = useState(false)
   const [beat, setBeat] = useState(-1)
   const [tempo, setTempo] = useState(96)
+  const [mode, setMode] = useState('chuck') // 'chuck' | 'chord'
+  const [chord, setChord] = useState('G')
   const timer = useRef(null)
+
+  // One stroke → the right sound for the current mode. Shared by both players.
+  const strike = useRef(null)
+  strike.current = (stroke) => {
+    if (mode === 'chord') {
+      // Rhythm strums: top strings only, matched light velocity, and a fast crisp
+      // sweep — but they RING OUT naturally (no choking). The full heavy sweep is
+      // reserved for the Capo Optimizer's single-chord auditions.
+      if (stroke === 'D') playAcousticStrum(chord, { up: false, strings: 4, velocity: 0.7 })
+      else if (stroke === 'U') playAcousticStrum(chord, { up: true, strings: 3, velocity: 0.7 })
+      else if (stroke === 'X') playStringMute()
+    } else {
+      if (stroke === 'D') playChuck({ up: false, velocity: 0.95 })
+      else if (stroke === 'U') playChuck({ up: true, velocity: 0.8 })
+      else if (stroke === 'X') playThumbSlap()
+    }
+  }
+  const doStrike = (s) => strike.current(s)
 
   const patterns = LIBRARY[cat]
   const pattern = patterns[sel]
-  const stepMs = ((60 / tempo) / pattern.sub) * 1000
+  // Same 16th-note timebase as the Custom Studio → identical speed at equal BPM.
+  const stepMs = ((60 / tempo) / SUB) * 1000
+  const presetCols = Math.min(pattern.seq.length, 16)
 
   // Reset selection when switching category.
   const chooseCat = (c) => {
@@ -281,8 +414,7 @@ export default function StrummingStudio() {
       const step = b % pattern.seq.length
       setBeat(step)
       const s = pattern.seq[step]
-      if (s === 'D' || s === 'X') playChuck({ up: false, velocity: s === 'X' ? 0.7 : 0.95 })
-      else if (s === 'U') playChuck({ up: true, velocity: 0.8 })
+      if (s === 'D' || s === 'U' || s === 'X') doStrike(s)
       b++
     }
     fire()
@@ -299,9 +431,80 @@ export default function StrummingStudio() {
           <span className="chip text-white/50 text-xs">percussive practice · muted chucks</span>
         </div>
         <p className="text-xs text-white/40 mb-5">
-          Pick a pattern, hit play, and lock the groove into your strumming hand. Down (↓) and
-          up (↑) strokes trigger distinct muted string sounds — ✕ is an accented dead-string chuck.
+          Pick a pattern, hit play, and lock the groove into your strumming hand.
         </p>
+
+        {/* Sound mode: muted chucks vs a real ringing chord */}
+        <div className="flex flex-wrap items-center gap-3 mb-5">
+          <div className="flex items-center gap-1 bg-white/5 rounded-xl p-1">
+            {[
+              ['chuck', '✕ Muted Chucks'],
+              ['chord', '🎸 Play Chord'],
+            ].map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => setMode(id)}
+                className={`px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                  mode === id ? 'bg-accent-500/80 text-white' : 'text-white/50 hover:text-white/80'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <AnimatePresence mode="wait">
+            {mode === 'chord' ? (
+              <motion.label
+                key="chord-pick"
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0 }}
+                className="flex items-center gap-2"
+              >
+                <span className="text-xs text-white/40">Chord</span>
+                <select
+                  value={chord}
+                  onChange={(e) => setChord(e.target.value)}
+                  className="bg-black/40 border border-white/10 focus:border-accent-400/50 rounded-xl px-3 py-1.5 text-sm font-mono outline-none"
+                >
+                  {STRUM_CHORDS.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-[11px] text-white/40 hidden sm:inline">
+                  ↓ down · ↑ up (lighter) · ✕ string-mute
+                </span>
+              </motion.label>
+            ) : (
+              <motion.span
+                key="chuck-hint"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="text-[11px] text-white/40"
+              >
+                ↓ full rake · ↑ lighter/brighter · ✕ thumb slap
+              </motion.span>
+            )}
+          </AnimatePresence>
+
+          {/* quick audition buttons */}
+          <div className="flex items-center gap-1 ml-auto">
+            {['D', 'U', 'X'].map((s) => (
+              <button
+                key={s}
+                onClick={() => doStrike(s)}
+                className="w-8 h-8 grid place-items-center rounded-lg bg-white/5 hover:bg-white/15 text-sm font-bold"
+                title={`Audition ${s}`}
+              >
+                {s === 'D' ? '↓' : s === 'U' ? '↑' : '✕'}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Category tabs */}
         <div className="flex flex-wrap gap-2 mb-4">
@@ -353,7 +556,7 @@ export default function StrummingStudio() {
           <div>
             <p className="font-semibold text-lg">{pattern.name}</p>
             <p className="text-xs text-white/40">
-              {cat} · {pattern.feel} · {pattern.sub === 4 ? 'sixteenth' : 'eighth'}-note grid
+              {cat} · {pattern.feel} · {pattern.seq.length} steps
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -383,11 +586,12 @@ export default function StrummingStudio() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="grid gap-1.5 grid-cols-8"
+            className="grid gap-1.5"
+            style={{ gridTemplateColumns: `repeat(${presetCols}, minmax(0, 1fr))` }}
           >
             {pattern.seq.map((s, i) => {
               const activeStep = beat === i
-              const beatMark = i % pattern.sub === 0
+              const beatMark = i % SUB === 0
               return (
                 <motion.div
                   key={i}
@@ -402,7 +606,7 @@ export default function StrummingStudio() {
                   <Stroke s={s} />
                   {beatMark && (
                     <span className="absolute -bottom-4 text-[9px] text-white/30 font-mono">
-                      {i / pattern.sub + 1}
+                      {i / SUB + 1}
                     </span>
                   )}
                 </motion.div>
@@ -417,7 +621,7 @@ export default function StrummingStudio() {
       </div>
 
       {/* Build-your-own step sequencer */}
-      <CustomSequencer />
+      <CustomSequencer mode={mode} chord={chord} />
     </div>
   )
 }

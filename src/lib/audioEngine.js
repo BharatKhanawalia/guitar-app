@@ -25,16 +25,23 @@ import { parseChord } from './chordTheory'
 /* ------------------------------------------------------------------ */
 
 let synth = null // melodic FM PolySynth (the "electric-piano-ish" guitar)
-let sampler = null // optional real-sample upgrade
+let sampler = null // real acoustic samples — natural, ringing release for everything
 let usingSampler = false
-let melodicIn = null // input node of the melodic chain (filter)
+let samplerReady = null // promise that resolves once the sample-load attempt is done
+let melodicIn = null // input node of the melodic chain (filter → chorus → reverb)
+let acousticIn = null // DRY acoustic bus (no chorus, tiny room) for sampled strums
 
 let chuckVoices = [] // choked PluckSynth pool for the muted rake
+let strumVoices = [] // RINGING PluckSynth pool for acoustic-style chord strums
 let downScratch = null
 let upScratch = null
+let slap = null // "thumb slap" body thump (MembraneSynth)
+let slapNoise = null // slap transient noise
 let percOut = null // dry-ish percussion bus
 
 let chime = null
+
+let masterAnalyser = null // taps all output buses → level metering / audio tests
 
 let booting = null
 let ready = false
@@ -52,6 +59,14 @@ async function boot() {
     filter.chain(chorus, reverb)
     melodicIn = filter
 
+    // DRY acoustic bus for real-sample / plucked strums: NO chorus (that shimmer
+    // is what read as "electronic"), just a gentle top rolloff and a tiny room so
+    // notes decay naturally and consecutive strums stay separate.
+    const acReverb = new Tone.Reverb({ decay: 1.0, wet: 0.09 }).toDestination()
+    const acFilter = new Tone.Filter(6500, 'lowpass')
+    acFilter.connect(acReverb)
+    acousticIn = acFilter
+
     synth = new Tone.PolySynth(Tone.Synth, {
       oscillator: { type: 'fmsine', modulationType: 'triangle', modulationIndex: 1.6 },
       envelope: { attack: 0.006, decay: 0.9, sustain: 0.15, release: 1.4 },
@@ -61,7 +76,7 @@ async function boot() {
 
     /* --- Percussion bus (muted chucks) ------------------------------ */
     // Dry and punchy — no big reverb tail, just a touch of body.
-    percOut = new Tone.Gain(1.5).toDestination()
+    percOut = new Tone.Gain(0.9).toDestination() // was 1.5 — that clipped on rakes
 
     // Heavily choked strings: short, low resonance → a "chk", not a ring.
     chuckVoices = Array.from({ length: 6 }, () => {
@@ -75,6 +90,36 @@ async function boot() {
       p.connect(percOut)
       return p
     })
+
+    // Ringing plucked strings (Karplus-Strong) — the FALLBACK when no real samples
+    // are installed. Tuned for natural DECAY (not endless sustain) so consecutive
+    // strums separate cleanly, and routed through the dry acoustic bus (no chorus).
+    strumVoices = Array.from({ length: 6 }, () => {
+      const p = new Tone.PluckSynth({
+        attackNoise: 1.0, // a little pick noise, not a rasp
+        dampening: 3400, // slightly darker → less "digital" edge
+        resonance: 0.85, // natural, ringing decay (no artificial choking)
+        release: 0.8,
+      })
+      p.volume.value = -5
+      p.connect(acousticIn)
+      return p
+    })
+
+    // "Thumb slap" — a brief percussive thump on the body/strings (muted-mode ✕).
+    slap = new Tone.MembraneSynth({
+      pitchDecay: 0.03,
+      octaves: 3,
+      envelope: { attack: 0.001, decay: 0.16, sustain: 0, release: 0.08 },
+    })
+    slap.volume.value = -2
+    slap.connect(percOut)
+    slapNoise = new Tone.NoiseSynth({
+      noise: { type: 'pink' },
+      envelope: { attack: 0.001, decay: 0.045, sustain: 0, release: 0.02 },
+    })
+    slapNoise.volume.value = -9
+    slapNoise.connect(percOut)
 
     // Pick "scratch" that rides on top of the rake.
     const mkScratch = ({ freq, q, type, vol }) => {
@@ -98,10 +143,42 @@ async function boot() {
     chime.volume.value = -12
     chime.connect(reverb)
 
+    // Tap every output bus so we can meter total output (and prove sound flows).
+    masterAnalyser = new Tone.Analyser('waveform', 256)
+    reverb.connect(masterAnalyser)
+    acReverb.connect(masterAnalyser)
+    percOut.connect(masterAnalyser)
+
     ready = true
-    loadSampler() // fire-and-forget optional upgrade
+    samplerReady = loadSampler() // kick off the real-sample upgrade; awaited by pitched voices
   })()
   return booting
+}
+
+/**
+ * Boot AND wait for the acoustic-sample load attempt to finish. Pitched voices
+ * use this instead of boot() so the VERY FIRST chord already plays the real
+ * guitar samples — never the FM-synth fallback while samples are still loading.
+ * If no samples are installed, samplerReady resolves fast and we use the synth.
+ */
+async function ensureSamples() {
+  await boot()
+  if (samplerReady) {
+    try {
+      await samplerReady
+    } catch {
+      /* sample load failed → fall back to the synth, nothing else to do */
+    }
+  }
+}
+
+/** RMS of the strumming engine's output (0..1) — metering + audio self-tests. */
+export function getMasterLevel() {
+  if (!masterAnalyser) return 0
+  const buf = masterAnalyser.getValue()
+  let s = 0
+  for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i]
+  return Math.sqrt(s / buf.length)
 }
 
 /* ------------------------------------------------------------------ */
@@ -117,11 +194,11 @@ async function loadSampler() {
       sampler = new Tone.Sampler({
         urls: map,
         baseUrl: '/samples/guitar-acoustic/',
-        release: 1.2,
+        release: 0.8, // long, natural release — the strings ring out, no choking
         onload: resolve,
         onerror: reject,
       })
-      sampler.connect(melodicIn)
+      sampler.connect(acousticIn) // dry bus → real, close-mic'd acoustic tone
     })
     usingSampler = true
   } catch {
@@ -164,7 +241,7 @@ export function voiceChord(symbol) {
 
 /** Strum a chord low→high (down) or high→low (up) with a strum micro-delay. */
 export async function playChord(symbol, { direction = 'down', velocity = 0.85 } = {}) {
-  await boot()
+  await ensureSamples()
   const notes = voiceChord(symbol)
   if (!notes.length) return
   const ordered = direction === 'up' ? [...notes].reverse() : notes
@@ -187,7 +264,7 @@ let heldNotes = []
 
 /** Strum a chord and HOLD it (no auto-release). Replaces any prior held chord. */
 export async function startChord(symbol, { direction = 'down', velocity = 0.8 } = {}) {
-  await boot()
+  await ensureSamples()
   const notes = voiceChord(symbol)
   if (!notes.length) return
   releaseChord() // cut the previous sustained chord first
@@ -219,26 +296,83 @@ export function releaseChord() {
 
 /** Play a single pitched note (fretboard taps, references). */
 export async function playNote(note, dur = '4n', velocity = 0.9) {
-  await boot()
+  await ensureSamples()
   const src = usingSampler && sampler ? sampler : synth
   src.triggerAttackRelease(note, dur, Tone.now() + 0.01, velocity)
 }
 
 /**
  * Muted strum ("chuck"). Rakes choked strings across the neck for a percussive
- * "trrr", louder and stringy — not a drum hit. `up` gives a lighter, brighter,
- * high→low rake.
+ * "trrr" — not a drum hit. Down is full/darker (all 6, low→high); up is lighter
+ * and brighter (top strings, high→low). Slower & more detailed than a click:
+ * a wider stagger reads clearly as a hand sweeping the strings.
  */
-export async function playChuck({ up = false } = {}) {
+export async function playChuck({ up = false, velocity = 0.9, count = null, time = 0 } = {}) {
   await boot()
-  const t = Tone.now() + 0.005
-  // Down rakes all 6 low→high; up is lighter — top 5 strings high→low.
-  const strings = up
-    ? ['E4', 'B3', 'G3', 'D3', 'A2']
-    : ['E2', 'A2', 'D3', 'G3', 'B3', 'E4']
-  const stagger = up ? 0.005 : 0.006
-  strings.forEach((n, i) => chuckVoices[i % chuckVoices.length].triggerAttack(n, t + i * stagger))
-  ;(up ? upScratch : downScratch).triggerAttackRelease(0.05, t, up ? 0.7 : 0.95)
+  const t = Tone.now() + 0.005 + Math.max(0, time) // `time` = humanized micro-shift
+  let strings = up
+    ? ['E4', 'B3', 'G3', 'D3'] // up: lighter, top strings, high→low
+    : ['E2', 'A2', 'D3', 'G3', 'B3', 'E4'] // down: full rake, low→high
+  if (count) strings = strings.slice(0, Math.max(2, Math.min(count, strings.length)))
+  const stagger = up ? 0.012 : 0.016 // wider than before → a real "sweep"
+  strings.forEach((n, i) => {
+    chuckVoices[i % chuckVoices.length].triggerAttack(n, t + i * stagger, velocity * (up ? 0.75 : 1))
+  })
+  ;(up ? upScratch : downScratch).triggerAttackRelease(0.06, t, velocity * (up ? 0.6 : 0.95))
+}
+
+/**
+ * Acoustic chord strum for the Strumming Studio's "Play Chord" mode.
+ * Down = full ringing rake low→high (wide stagger, longer sustain).
+ * Up   = lighter, brighter, high→low across the top strings, slightly higher
+ *        velocity feel — as a real up-stroke catches fewer, higher strings.
+ * Uses the real sampler when samples are installed, else ringing pluck voices.
+ */
+export async function playAcousticStrum(
+  symbol,
+  { up = false, velocity = 0.85, strings = null, sustain = null, spread = null, time = 0 } = {},
+) {
+  await ensureSamples()
+  const voiced = voiceChord(symbol)
+  if (!voiced.length) return
+  // RHYTHM VOICING: catch only the TOP strings — dropping the heavy bass keeps a
+  // rhythm strum from dominating. Down and up use the SAME top strings, differing
+  // only in sweep direction (down = low→high, up = high→low) and count.
+  const n = Math.max(2, Math.min(strings ?? (up ? 3 : 4), voiced.length))
+  const top = voiced.slice(-n) // top n strings, low→high
+  const ordered = up ? [...top].reverse() : top
+  const now = Tone.now() + 0.02 + Math.max(0, time)
+  // "Brief & distinguishable" comes from a FAST SWEEP (tight per-string micro-
+  // delay), NOT from choking. Each stroke reads as a crisp attack, then the
+  // strings ring out NATURALLY (long sampler release) — no dampening, no fade.
+  const stagger = spread ?? (up ? 0.009 : 0.012)
+  const dur = sustain ?? '1n' // let it ring
+  const useSamp = usingSampler && sampler
+  ordered.forEach((note, i) => {
+    // Downs are voiced as light as ups (same 0.78 multiplier) so a rhythm down
+    // no longer reads as a heavy, over-defined accent.
+    const v = Math.min(1, velocity * 0.78 * (0.9 + Math.random() * 0.1))
+    const t = now + 0.006 + i * stagger
+    if (useSamp) sampler.triggerAttackRelease(note, dur, t, v)
+    else strumVoices[i % strumVoices.length].triggerAttack(note, t, v)
+  })
+}
+
+/** Short muted string scratch — the ✕ in "Play Chord" mode (dead-string rake). */
+export async function playStringMute({ velocity = 0.7, time = 0 } = {}) {
+  await boot()
+  const t = Tone.now() + 0.005 + Math.max(0, time)
+  const strings = ['A2', 'D3', 'G3', 'B3']
+  strings.forEach((n, i) => chuckVoices[i % chuckVoices.length].triggerAttack(n, t + i * 0.008, velocity))
+  downScratch.triggerAttackRelease(0.05, t, velocity)
+}
+
+/** Brief percussive "thumb slap" on the body/strings — the ✕ in muted mode. */
+export async function playThumbSlap({ velocity = 0.95, time = 0 } = {}) {
+  await boot()
+  const t = Tone.now() + 0.005 + Math.max(0, time)
+  slap.triggerAttackRelease('B1', 0.12, t, velocity)
+  slapNoise.triggerAttackRelease(0.03, t, velocity * 0.75)
 }
 
 /** Short "you're in tune" bell (perfect-fifth ding). */
@@ -254,4 +388,9 @@ export function isAudioReady() {
 }
 export function isUsingSamples() {
   return usingSampler
+}
+
+// Dev-only handle so automated tests can read output level & sampler status.
+if (import.meta.env?.DEV && typeof window !== 'undefined') {
+  window.__capoAudio = { getMasterLevel, isUsingSamples, isAudioReady }
 }

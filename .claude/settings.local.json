@@ -22,7 +22,27 @@
       "Bash(node -p \"require\\('./node_modules/@mediapipe/tasks-vision/package.json'\\).version\")",
       "Bash(node -p \"require\\('./node_modules/react-webcam/package.json'\\).version\")",
       "Bash(grep -iA3 \"screenshot\\\\|puppeteer\\\\|scripts\")",
-      "Bash(node scripts/verify.mjs)"
+      "Bash(node scripts/verify.mjs)",
+      "Bash(node __TRACKED_VAR__/genwav.mjs __TRACKED_VAR__/test-prog.wav)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/)",
+      "Bash(node /private/tmp/claude-501/-Users-bharatkhanawalia-Documents-Bharat-Coding-Work-Development-Projects-capoflow/204cdf86-5132-414a-8675-be2e011396d2/scratchpad/verify-a2c.mjs /private/tmp/claude-501/-Users-bharatkhanawalia-Documents-Bharat-Coding-Work-Development-Projects-capoflow/204cdf86-5132-414a-8675-be2e011396d2/scratchpad/test-prog.wav /private/tmp/claude-501/-Users-bharatkhanawalia-Documents-Bharat-Coding-Work-Development-Projects-capoflow/204cdf86-5132-414a-8675-be2e011396d2/scratchpad)",
+      "Bash(node *)",
+      "Bash(pkill -f vite)",
+      "Bash(ffmpeg -version)",
+      "Bash(ffmpeg -y -stream_loop 4 -i /private/tmp/claude-501/-Users-bharatkhanawalia-Documents-Bharat-Coding-Work-Development-Projects-capoflow/204cdf86-5132-414a-8675-be2e011396d2/scratchpad/test-hard.wav -codec:a libmp3lame -b:a 192k /private/tmp/claude-501/-Users-bharatkhanawalia-Documents-Bharat-Coding-Work-Development-Projects-capoflow/204cdf86-5132-414a-8675-be2e011396d2/scratchpad/test-long.mp3)",
+      "Bash(git check-ignore *)",
+      "Bash(DUMP=1 node scripts/test-dsp.mjs)",
+      "Bash(BEATDUMP=1 BEATLO=0 BEATHI=9 node scripts/test-dsp.mjs)",
+      "Bash(BEATDUMP=1 BEATLO=2.8 BEATHI=5.5 node scripts/test-dsp.mjs)",
+      "Bash(ffprobe -v error -show_entries format=duration -of csv=p=0 public/trimmed2.wav)",
+      "Bash(BEATDUMP=1 BEATLO=0 BEATHI=8 node scripts/test-dsp.mjs)",
+      "Bash(FILE=trimmed2 BEATDUMP=1 BEATLO=0 BEATHI=8 node scripts/test-dsp.mjs)",
+      "Bash(FILE=trimmed1 BEATDUMP=1 BEATLO=99 BEATHI=99 node scripts/test-dsp.mjs)",
+      "Bash(FILE=trimmed2 BEATDUMP=1 BEATLO=99 BEATHI=99 node scripts/test-dsp.mjs)",
+      "Bash(cp /tmp/exp-side.mjs ./exp-side.mjs)",
+      "Bash(rm -f exp-side.mjs)",
+      "Bash(FILE=3idiots node scripts/test-dsp.mjs)",
+      "Bash(FILE=beatles node scripts/test-dsp.mjs)"
     ]
   }
 }

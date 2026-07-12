@@ -145,6 +145,29 @@ export default function SheetTransposer() {
 
   return (
     <div className="space-y-4">
+      {/* How-to guide */}
+      <div className="glass-soft p-4 sm:p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-base">🎼</span>
+          <h3 className="font-bold text-sm">Paste any song in seconds</h3>
+        </div>
+        <ol className="grid sm:grid-cols-2 gap-2.5 text-[13px]">
+          {[
+            <>Search <span className="text-accent-300 font-semibold">“&lt;song name&gt; guitar chords”</span> on Google.</>,
+            <>Open the <span className="text-accent-300 font-semibold">tabs.ultimate-guitar.com</span> link and copy the text sheet.</>,
+            <>Click <span className="text-mint-300 font-semibold">Edit</span> below, paste the text, and click <span className="text-mint-300 font-semibold">Done</span>.</>,
+            <>Use <span className="text-accent-300 font-semibold">Transpose</span> to find easier chords, and check <span className="text-accent-300 font-semibold">Simplify</span> to drop complex extensions.</>,
+          ].map((t, i) => (
+            <li key={i} className="flex items-start gap-2.5">
+              <span className="shrink-0 w-5 h-5 mt-0.5 rounded-full bg-accent-500/80 grid place-items-center text-[10px] font-bold">
+                {i + 1}
+              </span>
+              <span className="text-white/75">{t}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+
       {/* Control bar */}
       <div className="glass p-4 flex flex-wrap items-center gap-3 sticky top-2 z-20">
         {/* Transpose */}

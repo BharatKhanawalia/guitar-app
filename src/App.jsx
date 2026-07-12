@@ -11,6 +11,8 @@ import StrummingStudio from './components/StrummingStudio'
 // AR Studio pulls in the heavy MediaPipe hand-tracking bundle — load it only
 // when the tab is opened so it never weighs down the initial app load.
 const ARStudio = lazy(() => import('./components/ARStudio'))
+// Audio→Chords carries the DSP + export libs — lazy-load it the same way.
+const AudioToChords = lazy(() => import('./components/audio2chords/AudioToChords'))
 import EnharmonicToggle from './components/EnharmonicToggle'
 import FretboardDiagram from './components/FretboardDiagram'
 import { isChord, respellChord } from './lib/chordTheory'
@@ -20,6 +22,7 @@ const TABS = [
   { id: 'capo', label: 'Capo Optimizer', icon: '🎸' },
   { id: 'sheet', label: 'Sheet Transposer', icon: '🎼' },
   { id: 'strum', label: 'Strumming Studio', icon: '🥁' },
+  { id: 'audio', label: 'Audio → Chords', icon: '🎧' },
   { id: 'tuner', label: 'Pro Tuner', icon: '🎯' },
   { id: 'ar', label: 'AR Studio', icon: '✋' },
 ]
@@ -180,6 +183,18 @@ export default function App() {
             {tab === 'sheet' && <SheetTransposer />}
 
             {tab === 'strum' && <StrummingStudio />}
+
+            {tab === 'audio' && (
+              <Suspense
+                fallback={
+                  <div className="glass p-10 text-center text-white/50 max-w-3xl mx-auto">
+                    Loading Audio → Chords…
+                  </div>
+                }
+              >
+                <AudioToChords />
+              </Suspense>
+            )}
 
             {tab === 'tuner' && (
               <div className="max-w-xl mx-auto">
