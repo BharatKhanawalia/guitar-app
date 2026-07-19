@@ -48,20 +48,26 @@ export default function AudioToChords() {
     const pct = (p) => setProgress(Math.round(p * 100))
     try {
       const forPlayback = bytes.slice(0) // pristine copy for playback (full mix)
+      const forLyrics = bytes.slice(0) // pristine copy for Whisper (before AI transfers bytes)
       let res
       if (engine === 'ai') {
         res = await processAI(bytes, pct)
       } else {
         setPhase('Analysing')
         res = await analyzeAudio(bytes, { engine: 'accurate', preferFlats, onProgress: pct })
+        res.engineLabel = 'Traditional (DSP)'
       }
       if (!res.segments.length) {
         throw new Error('No chords could be detected — the audio may be too quiet or percussive.')
       }
       setAudioBytes(forPlayback)
+      res.lyricsStatus = 'transcribing'
       setResult(res)
       setStatus('')
       setModalOpen(true)
+      // Auto lyrics: chords are already on screen; transcribe in the background and
+      // stream the lines into the ribbon when ready. Never blocks / never fails hard.
+      runLyrics(forLyrics)
     } catch (e) {
       console.error(e)
       setStatus('error')
@@ -79,26 +85,55 @@ export default function AudioToChords() {
     setPhase('Decoding')
     const { data, sampleRate } = await sep.decodeMono(bytes, 44100)
 
-    let session = null
+    // Separation runs in a Web Worker so the UI never freezes. Best-effort: if the
+    // on-device model can't load or run (network, WASM, memory), we DON'T fail —
+    // we analyse the raw mix and flag it, so the tab always produces a result.
+    let instrumental = data
+    let separated = false
     if (sep.hasSeparationModel()) {
-      setPhase('Loading AI model')
-      session = await sep.getSeparationSession((p) => pct(p * 0.4))
+      try {
+        setPhase('Loading AI model (first run downloads 66 MB)')
+        instrumental = await sep.separateInWorker(data, {
+          onProgress: (phase, p) => {
+            if (phase === 'model') {
+              setPhase('Loading AI model (first run downloads 66 MB)')
+              pct(p * 0.4)
+            } else {
+              setPhase('Separating vocals (on-device)')
+              pct(0.4 + p * 0.35)
+            }
+          },
+        })
+        separated = true
+      } catch (e) {
+        console.warn('AI separation failed — falling back to raw mix:', e)
+        setSepNote(true)
+        instrumental = data
+      }
+    } else {
+      setSepNote(true)
     }
 
-    setPhase(session ? 'Separating vocals' : 'Preparing (no model — raw mix)')
-    const { instrumental, usedModel } = await sep.separate(data, {
-      session,
-      onProgress: (p) => pct(0.4 + p * 0.35),
-    })
-    if (!usedModel) setSepNote(true)
-
-    setPhase('Analysing instrumental')
+    setPhase('Analysing')
     const res = await analyzePcm(instrumental, sampleRate, {
       engine: 'accurate',
       preferFlats,
       onProgress: (p) => pct(0.75 + p * 0.25),
     })
+    res.engineLabel = separated ? 'AI Neural · vocals separated' : 'AI · raw mix (separation unavailable)'
     return res
+  }
+
+  /** Background lyric transcription — updates result.lyrics in place when done. */
+  async function runLyrics(bytesCopy) {
+    try {
+      const { transcribeLyrics } = await import('../../lib/whisper')
+      const lyrics = await transcribeLyrics(bytesCopy)
+      setResult((prev) => (prev ? { ...prev, lyrics, lyricsStatus: lyrics ? 'done' : 'empty' } : prev))
+    } catch (e) {
+      console.warn('Lyrics transcription failed — chords still work:', e)
+      setResult((prev) => (prev ? { ...prev, lyricsStatus: 'error' } : prev))
+    }
   }
 
   async function onFile(file, evt) {

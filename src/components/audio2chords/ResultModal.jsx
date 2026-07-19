@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
 import { AudioSyncProvider, useAudioSync } from '../../context/AudioSyncContext'
 import GridView from './GridView'
@@ -33,20 +33,35 @@ export default function ResultModal({ open, onClose, result, audioBytes, preferF
 }
 
 const TABS = [
-  { id: 'grid', label: 'Grid View', icon: '▦' },
+  { id: 'grid', label: 'Chords Only', icon: '▦' },
   { id: 'lyrics', label: 'Lyrics + Chords', icon: '🎤' },
 ]
 
 function ModalInner({ onClose, title }) {
   const [tab, setTab] = useState('grid')
   const [lyricsText, setLyricsText] = useState('')
-  const { ready, key, forcedKey, engine, semitones, segments, bpm } = useAudioSync()
+  const [autoFilled, setAutoFilled] = useState(false)
+  const { ready, key, forcedKey, engineLabel, semitones, segments, bpm, lyrics, lyricsStatus, stop } = useAudioSync()
+
+  // Closing the dialog must kill playback immediately (X or click-outside), not
+  // wait for the exit animation / unmount.
+  const handleClose = () => {
+    stop()
+    onClose()
+  }
+
+  // Auto-fill the Lyrics tab once Whisper finishes (only if the user hasn't typed).
+  useEffect(() => {
+    if (autoFilled || lyricsText.trim() || !lyrics?.lines?.length) return
+    setLyricsText(lyrics.lines.map((l) => l.text).join('\n'))
+    setAutoFilled(true)
+  }, [lyrics, lyricsText, autoFilled])
 
   const meta = { key: forcedKey ? forcedKey.label : key ? key.label : undefined, bpm }
 
   return (
     <>
-      <div onClick={onClose} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
+      <div onClick={handleClose} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
 
       <motion.div
         initial={{ opacity: 0, scale: 0.94, y: 24 }}
@@ -70,7 +85,13 @@ function ModalInner({ onClose, title }) {
                 </span>
               )}
               <span className="chip !py-0.5 !px-2">{segments.length} chords</span>
-              <span className="chip !py-0.5 !px-2 text-white/40">Traditional engine</span>
+              <span
+                className={`chip !py-0.5 !px-2 ${
+                  engineLabel?.includes('separated') ? 'text-accent-300' : 'text-white/40'
+                }`}
+              >
+                {engineLabel}
+              </span>
               {semitones !== 0 && (
                 <span className="chip !py-0.5 !px-2 text-accent-400">
                   transposed {semitones > 0 ? `+${semitones}` : semitones}
@@ -78,14 +99,14 @@ function ModalInner({ onClose, title }) {
               )}
             </div>
           </div>
-          <button onClick={onClose} className="btn-ghost !p-2.5 !rounded-full shrink-0" title="Close">
+          <button onClick={handleClose} className="btn-ghost !p-2.5 !rounded-full shrink-0" title="Close">
             ✕
           </button>
         </div>
 
         {/* Tab switch */}
         <LayoutGroup>
-          <div className="px-5 sm:px-6 pt-3">
+          <div className="px-5 sm:px-6 pt-3 flex justify-center">
             <div className="glass-soft p-1 inline-flex gap-1">
               {TABS.map((t) => (
                 <button
@@ -104,6 +125,9 @@ function ModalInner({ onClose, title }) {
                   )}
                   <span className="mr-1.5">{t.icon}</span>
                   {t.label}
+                  {t.id === 'lyrics' && lyricsStatus === 'transcribing' && (
+                    <span className="ml-2 inline-block w-2 h-2 rounded-full bg-accent-300 animate-pulse align-middle" title="Auto-transcribing lyrics…" />
+                  )}
                 </button>
               ))}
             </div>
@@ -123,9 +147,9 @@ function ModalInner({ onClose, title }) {
             <AnimatePresence mode="wait">
               <motion.div
                 key={tab}
-                initial={{ opacity: 0, x: tab === 'grid' ? -12 : 12 }}
+                initial={{ opacity: 0, x: 12 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: tab === 'grid' ? 12 : -12 }}
+                exit={{ opacity: 0, x: -12 }}
                 transition={{ duration: 0.2 }}
                 className="h-full"
               >

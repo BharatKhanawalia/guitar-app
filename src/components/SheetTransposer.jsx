@@ -6,6 +6,7 @@ import { playChord } from '../lib/audioEngine'
 import useKeyboardTranspose from '../hooks/useKeyboardTranspose'
 import EnharmonicToggle from './EnharmonicToggle'
 import { useStore } from '../store.jsx'
+import { rangeFill } from '../lib/ui'
 
 // Below this confidence, we hide the key badge rather than assert bad theory.
 const KEY_CONFIDENCE_MIN = 0.5
@@ -79,10 +80,11 @@ export default function SheetTransposer() {
     setPreferFlats,
   } = useStore()
   const [editing, setEditing] = useState(false)
+  const [showTips, setShowTips] = useState(true) // collapse the guide + capo note to free space
 
   // Autoscroll
   const [scrolling, setScrolling] = useState(false)
-  const [speed, setSpeed] = useState(35)
+  const [speed, setSpeed] = useState(40) // 0–100 (exponential → px/s)
   const sheetRef = useRef(null)
   const rafRef = useRef(null)
   const accRef = useRef(0)
@@ -124,7 +126,10 @@ export default function SheetTransposer() {
       last = now
       const el = sheetRef.current
       if (el) {
-        accRef.current += (speed * dt) / 1
+        // Exponential mapping: the slider (0–100) maps to ~1.5 → 120 px/s. Most of
+        // the travel now lives at the SLOW end so you can crawl with the lyrics.
+        const px = 1.5 * Math.pow(80, speed / 100)
+        accRef.current += px * dt
         const whole = Math.floor(accRef.current)
         if (whole >= 1) {
           el.scrollTop += whole
@@ -145,7 +150,18 @@ export default function SheetTransposer() {
 
   return (
     <div className="space-y-4">
+      {/* Tips toggle — collapse the guide + capo note so the sheet isn't pushed down */}
+      <div className="flex justify-end -mb-1">
+        <button
+          onClick={() => setShowTips((s) => !s)}
+          className="chip text-xs text-white/60 hover:text-white"
+        >
+          {showTips ? '▴ Hide tips' : '▾ Show tips & capo help'}
+        </button>
+      </div>
+
       {/* How-to guide */}
+      {showTips && (
       <div className="glass-soft p-4 sm:p-5">
         <div className="flex items-center gap-2 mb-3">
           <span className="text-base">🎼</span>
@@ -167,6 +183,9 @@ export default function SheetTransposer() {
           ))}
         </ol>
       </div>
+      )}
+
+      {showTips && <CapoTransposeNote semitones={semitones} />}
 
       {/* Control bar */}
       <div className="glass p-4 flex flex-wrap items-center gap-3 sticky top-2 z-20">
@@ -227,10 +246,11 @@ export default function SheetTransposer() {
           <span className="text-xs text-white/40">Speed</span>
           <input
             type="range"
-            min="10"
-            max="120"
+            min="0"
+            max="100"
             value={speed}
             onChange={(e) => setSpeed(Number(e.target.value))}
+            style={rangeFill(speed, 0, 100)}
             className="flex-1"
           />
         </div>
@@ -268,10 +288,19 @@ export default function SheetTransposer() {
             <EditToggle editing={false} onClick={() => setEditing(true)} />
             <div
               ref={sheetRef}
-              className="p-5 sm:p-7 font-mono text-[15px] leading-relaxed overflow-y-auto max-h-[62vh]"
+              className={`p-5 sm:p-7 font-mono text-[15px] leading-relaxed overflow-y-auto ${showTips ? 'max-h-[55vh]' : 'max-h-[calc(100vh-13rem)]'}`}
             >
               {model.lines.map((line, li) => {
               if (line.type === 'blank') return <div key={li} className="h-4" />
+              // Tablature: render VERBATIM — never transposed (the string letters
+              // E A D G B e are not chords here).
+              if (line.type === 'tab') {
+                return (
+                  <div key={li} className="whitespace-pre text-white/55 leading-6">
+                    {line.text}
+                  </div>
+                )
+              }
               const sectionText = line.pairs.map((p) => p.lyrics).join('')
               if (line.type === 'section') {
                 return (
@@ -308,5 +337,62 @@ export default function SheetTransposer() {
         <kbd className="px-1.5 py-0.5 bg-white/10 rounded">0</kbd> to reset · tap any chord to hear it
       </p>
     </div>
+  )
+}
+
+/**
+ * Glowing, pulsating note explaining transpose ⇄ capo for beginners. It adapts
+ * to the current transpose amount so the advice is concrete, not abstract.
+ */
+function CapoTransposeNote({ semitones }) {
+  const n = semitones
+  let headline
+  if (n < 0) {
+    headline = (
+      <>
+        You're at <b className="text-white">{n}</b> — to keep the song's original pitch with easier
+        shapes, put your <b className="text-mint-300">capo on fret {Math.abs(n)}</b>. No capo? Then
+        you're singing <b className="text-accent-200">{Math.abs(n)} semitone{Math.abs(n) > 1 ? 's' : ''} lower</b>.
+      </>
+    )
+  } else if (n > 0) {
+    headline = (
+      <>
+        You're at <b className="text-white">+{n}</b> — this raises the pitch, so you'll{' '}
+        <b className="text-accent-200">sing {n} semitone{n > 1 ? 's' : ''} higher</b>. (A capo can't
+        lower pitch, so +values are for changing key, not for capo placement.)
+      </>
+    )
+  } else {
+    headline = (
+      <>
+        <b className="text-mint-300">Transpose −1 = Capo on fret 1</b>, −2 = fret 2, and so on — same
+        pitch as the record, but easier open chords. Going <b className="text-accent-200">+</b> means
+        no capo and singing higher; <b className="text-accent-200">−</b> without a capo means singing
+        lower.
+      </>
+    )
+  }
+  return (
+    <motion.div
+      animate={{
+        boxShadow: [
+          '0 0 0px rgba(139,92,246,0.0), inset 0 0 20px rgba(139,92,246,0.05)',
+          '0 0 26px -4px rgba(139,92,246,0.55), inset 0 0 24px rgba(52,211,153,0.10)',
+          '0 0 0px rgba(139,92,246,0.0), inset 0 0 20px rgba(139,92,246,0.05)',
+        ],
+      }}
+      transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
+      className="rounded-2xl border border-accent-400/30 bg-gradient-to-r from-accent-500/10 to-mint-500/10 px-4 py-3 flex items-start gap-3"
+    >
+      <motion.span
+        animate={{ scale: [1, 1.15, 1], rotate: [0, -6, 0] }}
+        transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
+        className="text-xl shrink-0"
+      >
+        🎸
+      </motion.span>
+      <p className="text-[13px] leading-relaxed text-white/80">{headline}</p>
+    </motion.div>
   )
 }

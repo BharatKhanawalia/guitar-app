@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAudioSync } from '../../context/AudioSyncContext'
 import { buildSheet } from '../../lib/sheet'
+import { rangeFill } from '../../lib/ui'
 import { exportPDF, exportDOCX } from '../../lib/exporters'
 
 /**
@@ -125,6 +126,7 @@ export default function PlaybackBar({ showExport, lyricsText, title, meta }) {
             <input
               type="range" min={0.25} max={3} step={0.05} value={rate}
               onChange={(e) => setRate(parseFloat(e.target.value))}
+              style={rangeFill(rate, 0.25, 3)}
               className="w-20 sm:w-24"
             />
             <span className="font-mono text-xs w-11 text-right tabular-nums shrink-0">{rate.toFixed(2)}×</span>
@@ -135,6 +137,7 @@ export default function PlaybackBar({ showExport, lyricsText, title, meta }) {
             <input
               type="range" min={0} max={1.5} step={0.02} value={volume}
               onChange={(e) => setVolume(parseFloat(e.target.value))}
+              style={rangeFill(volume, 0, 1.5)}
               className="w-16 sm:w-20"
             />
           </label>

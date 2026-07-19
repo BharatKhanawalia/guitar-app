@@ -6,6 +6,7 @@ import {
   playStringMute,
   playThumbSlap,
 } from '../lib/audioEngine'
+import { rangeFill } from '../lib/ui'
 
 // Common chords for the "Play Chord" dropdown.
 const STRUM_CHORDS = [
@@ -284,6 +285,7 @@ function CustomSequencer({ mode, chord }) {
             max="200"
             value={bpm}
             onChange={(e) => setBpm(Number(e.target.value))}
+            style={rangeFill(bpm, 40, 200)}
             className="w-32"
           />
         </div>
@@ -568,6 +570,7 @@ export default function StrummingStudio() {
                 max="160"
                 value={tempo}
                 onChange={(e) => setTempo(Number(e.target.value))}
+                style={rangeFill(tempo, 50, 160)}
                 className="w-28"
               />
             </div>

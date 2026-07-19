@@ -73,6 +73,13 @@ export function AudioSyncProvider({ result, audioBytes, preferFlats, children })
     setPlaying(engine.isPlaying())
   }, [engine])
 
+  // Hard stop — silences the audio immediately (used when the modal closes, so the
+  // song never keeps playing behind a dismissed dialog).
+  const stop = useCallback(() => {
+    engine.pause()
+    setPlaying(false)
+  }, [engine])
+
   const seek = useCallback(
     (t) => {
       engine.seek(t)
@@ -146,36 +153,75 @@ export function AudioSyncProvider({ result, audioBytes, preferFlats, children })
     return idx
   }, [segments, time])
 
-  /* ---- measure-based beat grid ------------------------------------- */
-  const beats = useMemo(() => {
-    if (!segments.length || duration <= 0) return []
-    const beatDur = 60 / bpm
-    let phase = (beatOffset + beatShift * beatDur) % beatDur
-    if (phase < 0) phase += beatDur
+  /* ---- STRICT uniform beat grid (constant BPM) ---------------------- */
+  // The cursor must move at a CONSTANT tempo, and every row is exactly `meter`
+  // cells — no pickups, no empty padding. Cells tile the whole song at 60/bpm from
+  // a fixed phase; rows are strict groups of `meter` beats aligned so bar lines
+  // start on the "one" (the beat where chords change most). Because the BPM is now
+  // correct (e.g. khudajane's 3 s bar → 81 BPM), the grid no longer drifts.
+  const beatGrid = useMemo(() => {
+    if (!segments.length || duration <= 0 || !bpm) return { cells: [], rows: [] }
+    const beatPeriod = 60 / bpm
+    if (beatPeriod < 0.12) return { cells: [], rows: [] }
 
     const chordAt = (t) => {
-      for (let i = segments.length - 1; i >= 0; i--) {
-        if (t >= segments[i].start) return segments[i].chord
-      }
+      for (let i = segments.length - 1; i >= 0; i--) if (t >= segments[i].start) return segments[i].chord
       return segments[0].chord
     }
 
-    const out = []
-    // Optional pickup cell before beat one so the first strum isn't clipped.
-    if (phase > 0.12) out.push({ start: 0, end: phase, chord: chordAt(phase / 2), pickup: true })
-    for (let t = phase, k = 0; t < duration - 0.02; t += beatDur, k++) {
-      const start = t
-      const end = Math.min(t + beatDur, duration)
-      out.push({ start, end, chord: chordAt((start + end) / 2) })
+    // Uniform cells from the beat phase, tiling [0, duration].
+    const phase = ((beatOffset % beatPeriod) + beatPeriod) % beatPeriod
+    const cells = []
+    for (let t = phase > 0.04 ? phase - beatPeriod : phase, idx = 0; t < duration - 0.04; t += beatPeriod, idx++) {
+      const start = Math.max(0, t)
+      const end = Math.min(duration, t + beatPeriod)
+      if (end - start < 0.05) continue
+      cells.push({ start, end, chord: chordAt((start + end) / 2), index: cells.length })
     }
-    // Flag the first beat of each chord run so the grid only labels changes.
-    let prev = null
-    for (const b of out) {
-      b.changed = b.chord !== prev
-      prev = b.chord
+    if (!cells.length) return { cells: [], rows: [] }
+
+    // Downbeat phase p (0..meter-1): pick the offset that lands the most chord
+    // CHANGES on the "one" (chords overwhelmingly change on the downbeat), each
+    // vote weighted by the duration of the chord it starts. Beat-Shift nudges it.
+    const nearestIdx = (t) => {
+      let b = 0
+      let bd = Infinity
+      for (let i = 0; i < cells.length; i++) {
+        const d = Math.abs(cells[i].start - t)
+        if (d < bd) { bd = d; b = i }
+      }
+      return b
     }
-    return out
-  }, [segments, bpm, beatOffset, beatShift, meter, duration])
+    const phaseScore = new Array(meter).fill(0)
+    for (let i = 0; i < segments.length; i++) {
+      const s = segments[i]
+      if (s.start > 0.1 && (i === 0 || segments[i - 1].chord !== s.chord)) {
+        phaseScore[((nearestIdx(s.start) % meter) + meter) % meter] += Math.max(0.2, s.end - s.start)
+      }
+    }
+    let p = 0
+    for (let i = 1; i < meter; i++) if (phaseScore[i] > phaseScore[p]) p = i
+    p = (((p + Math.round(beatShift)) % meter) + meter) % meter
+
+    let prevChord = null
+    for (const c of cells) {
+      c.downbeat = (((c.index - p) % meter) + meter) % meter === 0
+      c.changed = c.chord !== prevChord
+      c.showLabel = c.changed || c.downbeat
+      prevChord = c.chord
+    }
+
+    // Rows: start at the first downbeat, then STRICT groups of `meter` cells. No
+    // empty placeholder cells — a short final row simply has fewer cells.
+    const firstDown = Math.max(0, cells.findIndex((c) => c.downbeat))
+    const rows = []
+    for (let i = firstDown; i < cells.length; i += meter) rows.push(cells.slice(i, i + meter))
+    return { cells, rows }
+  }, [segments, duration, bpm, meter, beatShift, beatOffset])
+
+  const beats = beatGrid.cells
+  const rows = beatGrid.rows
+  const lyrics = result?.lyrics || null
 
   const activeBeat = useMemo(() => {
     for (let i = 0; i < beats.length; i++) {
@@ -208,7 +254,8 @@ export function AudioSyncProvider({ result, audioBytes, preferFlats, children })
   const seekToBeat = useCallback((b) => b && seek(b.start), [seek])
 
   /* ---- settings actions -------------------------------------------- */
-  const nudgeBeat = useCallback((d) => setBeatShift((s) => +(s + d).toFixed(3)), [])
+  // Beat-shift now moves the DOWNBEAT phase by whole beats (which beat is "one").
+  const nudgeBeat = useCallback((d) => setBeatShift((s) => Math.round(s + d)), [])
   const resetBeat = useCallback(() => setBeatShift(0), [])
 
   // Forced key defaults to the detected key the first time it's engaged.
@@ -250,13 +297,15 @@ export function AudioSyncProvider({ result, audioBytes, preferFlats, children })
     segments, activeIndex,
     meter, setMeter,
     beatShift, nudgeBeat, resetBeat,
-    beats, activeBeat, beatProgress, seekToBeat,
+    beats, rows, activeBeat, beatProgress, seekToBeat,
+    lyrics, lyricsStatus: result?.lyricsStatus || null,
     key: result?.key || null,
     forcedKey: forcedKeyInfo,
     nudgeKey, toggleKeyMode, resetKey,
     engine: result?.engine,
+    engineLabel: result?.engineLabel || 'Traditional (DSP)',
     scaledDuration: duration / rate,
-    togglePlay, seek, setRate, shiftPitch, setVolume, toggleSuppress,
+    togglePlay, stop, seek, setRate, shiftPitch, setVolume, toggleSuppress,
     next, prev, jumpTo,
   }
 

@@ -154,19 +154,62 @@ export function magnitude({ re, im, fftSize = FFT }) {
 
 let ortModule = null
 async function ort() {
-  if (!ortModule) ortModule = await import('onnxruntime-web')
+  if (!ortModule) {
+    const m = await import('onnxruntime-web')
+    // ORT needs its OWN wasm runtime files (ort-wasm-*.wasm). Vite doesn't bundle
+    // them, so requests fell back to index.html → "expected magic word … found
+    // <!do…". Serve them from the version-matched CDN instead. Single-threaded
+    // avoids the SharedArrayBuffer / COOP-COEP requirement (no server headers).
+    m.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.27.0/dist/'
+    m.env.wasm.numThreads = 1
+    ortModule = m
+  }
   return ortModule
 }
 
-// Point this at a soft-mask vocal-separation .onnx (Spleeter-2stems / Open-Unmix
-// / UVR-lite). Drop the file in public/models/ and set the path here. While it's
-// blank the AI path runs the pipeline with an IDENTITY mask (raw mix) and says so
-// — we don't pretend to separate when there's no model.
-export const MODEL_URL = '' // e.g. '/models/vocal-unet.onnx'
+// UVR-MDX-NET-Inst_HQ_3 — outputs the INSTRUMENTAL stem directly. Fetched from
+// the Hugging Face CDN on first use and cached by the browser (66 MB). Inference
+// runs 100% on-device via ONNX Runtime Web. Verified in scripts/test-separation-full.mjs.
+export const MODEL_URL =
+  'https://huggingface.co/seanghay/uvr_models/resolve/main/UVR-MDX-NET-Inst_HQ_3.onnx'
 let sessionCache = null
 
 export function hasSeparationModel() {
   return !!MODEL_URL
+}
+
+/* ------------------------------------------------------------------ */
+/* Off-main-thread separation (keeps the UI responsive)                */
+/* ------------------------------------------------------------------ */
+let sepWorker = null
+
+/**
+ * Separate the instrumental in a Web Worker so the STFT + ONNX inference + ISTFT
+ * never block the UI thread. Reports progress via onProgress(phase, p) where
+ * phase is 'model' (download) or 'separate' (inference). Returns a Float32Array.
+ */
+export function separateInWorker(audio, { onProgress = () => {} } = {}) {
+  return new Promise((resolve, reject) => {
+    if (!sepWorker) {
+      sepWorker = new Worker(new URL('./sepWorker.js', import.meta.url), { type: 'module' })
+    }
+    const w = sepWorker
+    const handler = (e) => {
+      const m = e.data
+      if (m.type === 'progress') onProgress(m.phase, m.p)
+      else if (m.type === 'done') {
+        w.removeEventListener('message', handler)
+        resolve(m.instrumental)
+      } else if (m.type === 'error') {
+        w.removeEventListener('message', handler)
+        reject(new Error(m.message))
+      }
+    }
+    w.addEventListener('message', handler)
+    // structured-clone a COPY so the caller keeps its data for a raw-mix fallback
+    const copy = audio.slice()
+    w.postMessage({ audio: copy }, [copy.buffer])
+  })
 }
 
 /** Load (and cache) the separation session. Returns null if no model is set. */
@@ -255,32 +298,13 @@ async function runMask(session, mag) {
  * keeps the whole pipeline runnable/testable before the model asset is present.
  */
 export async function separate(signal, { session = null, onProgress = () => {} } = {}) {
-  onProgress(0.05)
-  const spec = stft(signal)
-  onProgress(0.35)
-  if (!session) return { instrumental: signal, usedModel: false }
-
-  const mag = magnitude(spec)
-  const mask = await runMask(session, mag)
-  onProgress(0.75)
-
-  // Apply the soft mask to the complex spectrum (mask the magnitude, keep phase).
-  const bins = spec.fftSize / 2 + 1
-  for (let f = 0; f < spec.re.length; f++) {
-    const m = mask[f]
-    for (let k = 0; k < bins; k++) {
-      const g = m[k] // instrumental gain in [0,1]
-      spec.re[f][k] *= g
-      spec.im[f][k] *= g
-      // maintain hermitian symmetry for the mirrored bins
-      const mk = spec.fftSize - k
-      if (mk < spec.fftSize && mk !== k) {
-        spec.re[f][mk] *= g
-        spec.im[f][mk] *= g
-      }
-    }
+  // No model → identity (analyse the raw mix, and the caller says so).
+  if (!session) {
+    onProgress(1)
+    return { instrumental: signal, usedModel: false }
   }
-  const instrumental = istft(spec)
-  onProgress(1)
+  // Real separation via the UVR MDX-Net pipeline (mono @ 44.1 kHz in/out).
+  const { mdxSeparate } = await import('./mdx.js')
+  const instrumental = await mdxSeparate(signal, session, await ort(), onProgress)
   return { instrumental, usedModel: true }
 }

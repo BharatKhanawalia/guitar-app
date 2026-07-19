@@ -10,20 +10,26 @@ import { isChord } from './chordTheory'
  * where `type` is 'lyric' | 'blank' | 'section'.
  */
 
-export function parseChordSheet(raw) {
-  if (!raw || !raw.trim()) return { lines: [] }
+/**
+ * Is this raw line a guitar TAB line (e|--12--13h15--|) or a fret-number line?
+ * These must NEVER be transposed — the leading string letters (E A D G B e) look
+ * like chords and would get mangled ("E" → "Eb"). We detect them and pass them
+ * through verbatim.
+ */
+export function isTabLine(line) {
+  const t = line.trim()
+  if (t.length < 4 || !t.includes('|')) return false
+  // string letter (optional) then a bar, then tab content
+  const leadsLikeTab = /^[eEbBgGdDaA]{0,2}\s*[|:]/.test(t)
+  // proportion of characters that are tab notation (dashes, pipes, digits, h/p/b/etc.)
+  const tabChars = (t.match(/[-|0-9hpbrsx*/\\~()t.]/g) || []).length
+  const ratio = tabChars / t.length
+  return (leadsLikeTab && ratio > 0.5) || ratio > 0.6
+}
 
-  let song
-  try {
-    // ChordsOverWordsParser is the modern replacement for the deprecated
-    // ChordSheetParser — same chords-above-lyrics model, wider chord support.
-    song = new ChordSheetJS.ChordsOverWordsParser().parse(raw)
-  } catch {
-    // Fall back to a naive parse if ChordSheetJS chokes on odd input.
-    return naiveParse(raw)
-  }
-
-  const lines = song.lines.map((line) => {
+// Extract the {type, pairs} model for one ChordSheetJS-parsed segment.
+function linesFromSong(song) {
+  return song.lines.map((line) => {
     const pairs = line.items
       .filter((item) => item && typeof item === 'object' && 'lyrics' in item)
       .map((item) => ({
@@ -39,11 +45,39 @@ export function parseChordSheet(raw) {
     else if (!hasChords && /^\s*\[.*\]\s*$/.test(pairs.map((p) => p.lyrics).join(''))) {
       type = 'section'
     }
-
     return { type, pairs }
   })
+}
 
-  return { lines }
+export function parseChordSheet(raw) {
+  if (!raw || !raw.trim()) return { lines: [] }
+
+  // Segment out TAB lines so ChordSheetJS never touches them (they'd be parsed as
+  // chords and transposed). Everything else is chord/lyric prose, parsed normally.
+  const rawLines = raw.replace(/\r/g, '').split('\n')
+  const out = []
+  let buffer = []
+  const flush = () => {
+    if (!buffer.length) return
+    const text = buffer.join('\n')
+    try {
+      out.push(...linesFromSong(new ChordSheetJS.ChordsOverWordsParser().parse(text)))
+    } catch {
+      out.push(...naiveParse(text).lines)
+    }
+    buffer = []
+  }
+  for (const rl of rawLines) {
+    if (isTabLine(rl)) {
+      flush()
+      out.push({ type: 'tab', text: rl, pairs: [] })
+    } else {
+      buffer.push(rl)
+    }
+  }
+  flush()
+
+  return { lines: out }
 }
 
 /** Very defensive fallback: pair each chord-line with the following lyric-line. */

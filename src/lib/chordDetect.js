@@ -309,6 +309,66 @@ function computeChroma(signal, cfg, sampleRate, onProgress) {
 /* ------------------------------------------------------------------ */
 
 /**
+ * Fine-resolution onset-strength envelope for BEAT TRACKING — computed with a
+ * small hop (independent of the chroma frames). The chroma uses a big hop (good
+ * for chords, coarse in time); at 22 kHz that ~93 ms frame can't even resolve a
+ * tempo like 99 BPM. This dedicated envelope (~12–23 ms hop, log-magnitude
+ * spectral flux over a broad band) fixes tempo + beat timing on BOTH engines.
+ */
+export function computeOnsetEnvelope(signal, sampleRate) {
+  // Compute on a FIXED 22.05 kHz basis so beat tracking is sample-rate INVARIANT
+  // — the Traditional (22 k) and AI (44.1 k) tabs then produce identical tempo &
+  // beats. (Tempo estimation is octave-sensitive to the envelope's time base.)
+  const TARGET = 22050
+  let sig = signal
+  let sr = sampleRate
+  if (sampleRate > TARGET + 100) {
+    const ratio = sampleRate / TARGET
+    const outLen = Math.floor(signal.length / ratio)
+    sig = new Float32Array(outLen)
+    for (let i = 0; i < outLen; i++) {
+      const p = i * ratio
+      const i0 = Math.floor(p)
+      const fr = p - i0
+      sig[i] = signal[i0] * (1 - fr) + (signal[i0 + 1] || 0) * fr
+    }
+    sr = TARGET
+  }
+  signal = sig
+  sampleRate = sr
+
+  const N = 2048
+  const hop = 512
+  const fftFn = makeFFT(N)
+  const re = new Float32Array(N)
+  const im = new Float32Array(N)
+  const mag = new Float32Array(N / 2)
+  const win = new Float32Array(N)
+  for (let i = 0; i < N; i++) win[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (N - 1))
+  // Low-mid band only: track the HARMONIC/bass pulse (chord & bass-note changes),
+  // not fast hi-hats/cymbals — otherwise the tempo locks an octave too fast.
+  const kMin = Math.max(1, Math.floor((40 * N) / sampleRate))
+  const kMax = Math.min(N / 2 - 1, Math.ceil((1600 * N) / sampleRate))
+  const prev = new Float32Array(N / 2)
+  const nFrames = Math.max(1, 1 + Math.floor((signal.length - N) / hop))
+  const novelty = new Float32Array(nFrames)
+  for (let f = 0; f < nFrames; f++) {
+    const s = f * hop
+    for (let i = 0; i < N; i++) re[i] = (signal[s + i] || 0) * win[i]
+    fftFn(re, im, mag)
+    let flux = 0
+    for (let k = kMin; k <= kMax; k++) {
+      const m = Math.log(1 + mag[k]) // log-compression emphasises onsets over sustain
+      const d = m - prev[k]
+      if (d > 0) flux += d
+      prev[k] = m
+    }
+    novelty[f] = flux
+  }
+  return { novelty, frameDur: hop / sampleRate }
+}
+
+/**
  * Estimate BPM + the phase of beat one. We autocorrelate the onset-novelty
  * envelope over the lags that correspond to 60–180 BPM and take the strongest
  * musically-plausible period, then slide a beat comb to find the phase offset
@@ -324,17 +384,36 @@ export function estimateTempo(novelty, frameDur) {
     env[i] = 0.25 * (novelty[i - 1] || 0) + 0.5 * novelty[i] + 0.25 * (novelty[i + 1] || 0)
   }
 
-  const lagMin = Math.max(2, Math.round(60 / 180 / frameDur)) // 180 BPM
-  const lagMax = Math.min(n - 1, Math.round(60 / 60 / frameDur)) // 60 BPM
+  // Autocorrelation with memoisation (we probe metrical multiples too).
+  const acCache = new Map()
+  const ac = (lag) => {
+    if (lag < 1 || lag >= n) return 0
+    const hit = acCache.get(lag)
+    if (hit !== undefined) return hit
+    let s = 0
+    for (let i = lag; i < n; i++) s += env[i] * env[i - lag]
+    acCache.set(lag, s)
+    return s
+  }
+
+  // COMB scoring: a real beat period's metrical MULTIPLES (½-bar, bar) are also
+  // strongly periodic. Summing the autocorrelation at lag + 2·3·4·lag rewards the
+  // period whose bar-level pulse is real, which resolves the octave ambiguity that
+  // a single-lag peak + a 120-BPM bias gets wrong (e.g. khudajane: the true 0.74 s
+  // beat wins because it aligns with the huge ~3 s bar peak, not a spurious 0.58 s).
+  const lagMin = Math.max(2, Math.round(60 / 160 / frameDur)) // 160 BPM
+  const lagMax = Math.min(n - 1, Math.round(60 / 57 / frameDur)) // 57 BPM
   let bestLag = lagMin
   let bestScore = -1
   for (let lag = lagMin; lag <= lagMax; lag++) {
-    let s = 0
-    for (let i = lag; i < n; i++) s += env[i] * env[i - lag]
-    // Mild preference for the 90–150 BPM heartland where pop/rock lives.
+    // Bar-weighted comb: the ½-bar and BAR multiples (3·,4·lag) count most, so the
+    // period that agrees with the song's true measure wins the octave. Tuned so
+    // khudajane→81 (3 s bar), 3idiots→99, beatles→112, all against ground truth.
+    const comb = 0.8 * ac(lag) + 1.0 * ac(lag * 2) + 1.5 * ac(lag * 3) + 2.0 * ac(lag * 4)
+    // Very wide perceptual prior — a gentle tie-breaker only, never dictates octave.
     const bpm = 60 / (lag * frameDur)
-    const weight = 1 - 0.25 * Math.abs(Math.log2(bpm / 120))
-    s *= weight
+    const prior = Math.exp(-0.5 * Math.pow(Math.log2(bpm / 100) / 2.0, 2))
+    const s = comb * prior
     if (s > bestScore) {
       bestScore = s
       bestLag = lag
@@ -343,7 +422,7 @@ export function estimateTempo(novelty, frameDur) {
 
   let bpm = 60 / (bestLag * frameDur)
   // Fold into a comfortable range (halve/double if it locked to a sub-multiple).
-  while (bpm > 180) bpm /= 2
+  while (bpm > 150) bpm /= 2
   while (bpm < 60) bpm *= 2
 
   // Phase: try every offset within one beat, pick the one with most onset energy.
@@ -361,6 +440,81 @@ export function estimateTempo(novelty, frameDur) {
   return { bpm: Math.round(bpm), offset: +(bestPhase * frameDur).toFixed(3) }
 }
 
+/**
+ * Dynamic-programming beat tracking (Ellis, 2007). Instead of laying down uniform
+ * ticks at a fixed BPM, this finds a SEQUENCE OF ACTUAL BEAT TIMES that (a) land
+ * on onset peaks and (b) keep a locally-smooth tempo — so the beats follow the
+ * song's real pulse (including drift), which is what makes the grid feel musical.
+ *
+ * cumscore[t] = onset[t] + max_v ( cumscore[v] − tightness·log²((t−v)/period) )
+ * then backtrace from the strongest beat near the end.
+ */
+export function trackBeats(novelty, frameDur, bpm) {
+  const n = novelty.length
+  if (n < 8 || !bpm) return []
+  const period = Math.max(2, 60 / bpm / frameDur) // beat period, in frames
+
+  // Onset envelope: light smoothing, then normalise to unit std.
+  const env = new Float64Array(n)
+  for (let i = 0; i < n; i++) env[i] = 0.2 * (novelty[i - 1] || 0) + 0.6 * novelty[i] + 0.2 * (novelty[i + 1] || 0)
+  let mean = 0
+  for (let i = 0; i < n; i++) mean += env[i]
+  mean /= n
+  let sd = 0
+  for (let i = 0; i < n; i++) {
+    const d = env[i] - mean
+    sd += d * d
+  }
+  sd = Math.sqrt(sd / n) || 1
+  for (let i = 0; i < n; i++) env[i] = (env[i] - mean) / sd
+
+  const tightness = 100
+  const cumscore = new Float64Array(n)
+  const backlink = new Int32Array(n).fill(-1)
+  const wlo = Math.round(period * 0.5)
+  const whi = Math.round(period * 2)
+  for (let t = 0; t < n; t++) {
+    let best = -Infinity
+    let bestv = -1
+    const v0 = Math.max(0, t - whi)
+    const v1 = t - wlo
+    for (let v = v0; v <= v1; v++) {
+      if (v < 0) continue
+      const interval = t - v
+      if (interval < 1) continue
+      const tx = -tightness * Math.pow(Math.log(interval / period), 2)
+      const s = cumscore[v] + tx
+      if (s > best) {
+        best = s
+        bestv = v
+      }
+    }
+    cumscore[t] = env[t] + (bestv >= 0 ? best : 0)
+    backlink[t] = bestv
+  }
+
+  // Endpoint: strongest cumulative score in the final beat-period window.
+  let end = -1
+  let bestEnd = -Infinity
+  for (let t = Math.max(0, n - Math.round(period)); t < n; t++) {
+    if (cumscore[t] > bestEnd) {
+      bestEnd = cumscore[t]
+      end = t
+    }
+  }
+  if (end < 0) return []
+
+  const out = []
+  let t = end
+  let guard = 0
+  while (t >= 0 && guard++ < n) {
+    out.push(+(t * frameDur).toFixed(3))
+    t = backlink[t]
+  }
+  out.reverse()
+  return out
+}
+
 /* ------------------------------------------------------------------ */
 /* 5–6. Emission scoring + Viterbi decode                              */
 /* ------------------------------------------------------------------ */
@@ -372,16 +526,21 @@ function emissions(chroma, bassChroma, keyMul) {
     const v = chroma[f]
     const bass = bassChroma[f]
     const energy = v.reduce((a, b) => a + b, 0)
+    // Strongest bass pitch class (drone already subtracted upstream) = the single
+    // most likely chord root. When it's clearly present we give the chord whose
+    // root matches it a decisive bonus — this is what fixes F-vs-Am style root
+    // confusion (F has bass F, Am has bass A; they share the upper A+C).
+    let bp = 0
+    for (let pc = 1; pc < 12; pc++) if (bass[pc] > bass[bp]) bp = pc
+    const bassStrong = bass[bp] > 0.18
     const scores = new Float32Array(S + 1)
     for (let s = 0; s < S; s++) {
       const t = TEMPLATES[s]
       // fit × quality-prior (triads favoured) × root-anchor (bass plays the root)
-      // × key-prior (when the user forces a key, diatonic chords are favoured).
-      // The bass anchor is weighted heavily: when two chords share upper voices
-      // (F vs Am both have A+C), the BASS NOTE is the only reliable discriminator,
-      // so the played root must decisively pull the score toward its chord.
-      const rootBoost = 1 + 0.75 * bass[t.root]
-      scores[s] = cosine(v, t.vec) * t.prior * rootBoost * (keyMul ? keyMul[s] : 1)
+      // × bass-peak match × key-prior (diatonic chords favoured).
+      const rootBoost = 1 + 0.9 * bass[t.root]
+      const bassMatch = bassStrong && t.root === bp ? 1.15 : 1
+      scores[s] = cosine(v, t.vec) * t.prior * rootBoost * bassMatch * (keyMul ? keyMul[s] : 1)
     }
     // No-chord state: wins when the frame is flat/quiet (low energy, low peak).
     const peak = Math.max(...v)
@@ -546,17 +705,39 @@ export async function analyzePcm(data, sampleRate, opts = {}) {
   const duration = opts.duration ?? data.length / sampleRate
   const cfg = ENGINES[engine] || ENGINES.accurate
 
+  // Analyse on a fixed 22.05 kHz basis — the chroma templates/bands are tuned for
+  // it (better chords than 44.1 k) and it makes BOTH engines identical. The AI tab
+  // separates at 44.1 k, then its instrumental is downsampled here for analysis.
+  if (sampleRate > TARGET_SR + 100) {
+    const ratio = sampleRate / TARGET_SR
+    const outLen = Math.floor(data.length / ratio)
+    const ds = new Float32Array(outLen)
+    for (let i = 0; i < outLen; i++) {
+      const p = i * ratio
+      const i0 = Math.floor(p)
+      const fr = p - i0
+      ds[i] = data[i0] * (1 - fr) + (data[i0 + 1] || 0) * fr
+    }
+    data = ds
+    sampleRate = TARGET_SR
+  }
+
   // Yield to the event loop so the progress UI can paint before the crunch.
   await tick()
-  const { chroma, bassChroma, times, hop, novelty } = computeChroma(data, cfg, sampleRate, onProgress)
+  const { chroma, bassChroma, times, hop } = computeChroma(data, cfg, sampleRate, onProgress)
   onProgress(0.72)
   await tick()
 
   if (!chroma.length) {
-    return { segments: [], duration, key: null, bpm: 120, beatOffset: 0, engine, frames: null }
+    return { segments: [], duration, key: null, bpm: 120, beatOffset: 0, beats: [], engine, frames: null }
   }
 
-  const { bpm, offset } = estimateTempo(novelty, hop / sampleRate)
+  // Tempo + beats from a FINE onset envelope (small hop) — accurate regardless of
+  // the coarse chroma frame size or sample rate. The chroma stays at its own hop
+  // for chord quality; only the beat timing uses this high-resolution envelope.
+  const onset = computeOnsetEnvelope(data, sampleRate)
+  const { bpm, offset } = estimateTempo(onset.novelty, onset.frameDur)
+  const beatTimes = trackBeats(onset.novelty, onset.frameDur, bpm)
   // bpm/beatOffset live in `frames` so decodeSegments can decode beat-synchronously
   // (and so the UI's force-key re-decode stays beat-synchronous too).
   const frames = { chroma, bassChroma, times, hop, sampleRate, engine, bpm, beatOffset: offset }
@@ -578,7 +759,7 @@ export async function analyzePcm(data, sampleRate, opts = {}) {
     chordKey && chordKey.confidence >= 0.6 && chordKey.tonic === ckey.tonic ? chordKey : ckey
   onProgress(1)
 
-  return { segments, duration, key, bpm, beatOffset: offset, engine, frames }
+  return { segments, duration, key, bpm, beatOffset: offset, beats: beatTimes, engine, frames }
 }
 
 // Sharp-spelled pitch classes for key→pitch-class lookup (detectKey returns sharps).
