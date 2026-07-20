@@ -27,12 +27,36 @@ export default function PlaybackBar({ showExport, lyricsText, title, meta }) {
     const r = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
     return r * duration
   }
-  const onMove = (e) => {
+  // Pointer events cover mouse, touch AND pen with one code path. setPointerCapture
+  // keeps move/up events flowing even if the finger slides off the bar.
+  const onPointerDown = (e) => {
+    if (!barRef.current) return
+    e.currentTarget.setPointerCapture?.(e.pointerId)
+    setDragging(true)
+    seek(xToTime(e.clientX))
+  }
+  const onPointerMove = (e) => {
     if (!barRef.current) return
     const rect = barRef.current.getBoundingClientRect()
     const t = xToTime(e.clientX)
     setScrub({ x: e.clientX - rect.left, t })
     if (dragging) seek(t)
+  }
+  const onPointerUp = () => setDragging(false)
+
+  // Keyboard: ←/→ ±1s (Shift ±5s), PageUp/Down ±10s, Home/End jump to ends.
+  const onKeyDown = (e) => {
+    const step = e.shiftKey ? 5 : 1
+    let t = null
+    if (e.key === 'ArrowLeft') t = Math.max(0, time - step)
+    else if (e.key === 'ArrowRight') t = Math.min(duration, time + step)
+    else if (e.key === 'PageDown') t = Math.max(0, time - 10)
+    else if (e.key === 'PageUp') t = Math.min(duration, time + 10)
+    else if (e.key === 'Home') t = 0
+    else if (e.key === 'End') t = duration
+    else return
+    e.preventDefault()
+    seek(t)
   }
 
   return (
@@ -44,18 +68,20 @@ export default function PlaybackBar({ showExport, lyricsText, title, meta }) {
         </span>
         <div
           ref={barRef}
-          className="relative flex-1 h-6 flex items-center cursor-pointer"
-          onMouseMove={onMove}
-          onMouseLeave={() => !dragging && setScrub(null)}
-          onMouseDown={(e) => {
-            setDragging(true)
-            seek(xToTime(e.clientX))
-            const up = () => {
-              setDragging(false)
-              window.removeEventListener('mouseup', up)
-            }
-            window.addEventListener('mouseup', up)
-          }}
+          role="slider"
+          tabIndex={0}
+          aria-label="Seek position"
+          aria-valuemin={0}
+          aria-valuemax={Math.round(duration) || 0}
+          aria-valuenow={Math.round(time) || 0}
+          aria-valuetext={fmt(time / rate)}
+          className="relative flex-1 h-6 flex items-center cursor-pointer touch-none select-none rounded-full outline-none focus-visible:ring-2 focus-visible:ring-accent-400/60"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+          onPointerLeave={() => !dragging && setScrub(null)}
+          onKeyDown={onKeyDown}
         >
           <div className="absolute inset-x-0 h-1.5 rounded-full bg-white/10 overflow-hidden">
             {segments.map((s, i) =>

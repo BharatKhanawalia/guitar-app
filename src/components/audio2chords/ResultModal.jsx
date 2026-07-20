@@ -41,7 +41,7 @@ function ModalInner({ onClose, title }) {
   const [tab, setTab] = useState('grid')
   const [lyricsText, setLyricsText] = useState('')
   const [autoFilled, setAutoFilled] = useState(false)
-  const { ready, key, forcedKey, engineLabel, semitones, segments, bpm, lyrics, lyricsStatus, stop } = useAudioSync()
+  const { ready, loadError, key, forcedKey, engineLabel, semitones, segments, bpm, lyrics, lyricsStatus, stop } = useAudioSync()
 
   // Closing the dialog must kill playback immediately (X or click-outside), not
   // wait for the exit animation / unmount.
@@ -136,7 +136,20 @@ function ModalInner({ onClose, title }) {
 
         {/* Body */}
         <div className="flex-1 min-h-0 px-4 sm:px-6 py-4">
-          {!ready ? (
+          {loadError ? (
+            <div className="h-full grid place-items-center text-center px-6">
+              <div className="max-w-sm">
+                <div className="text-4xl mb-3">🔇</div>
+                <h3 className="font-bold mb-1.5">Couldn’t play this audio</h3>
+                <p className="text-sm text-white/55 mb-4">{loadError}</p>
+                <p className="text-xs text-white/40 mb-5">
+                  The chords were still detected — but this file’s format can’t be decoded for in-browser
+                  playback. Try re-exporting it as a standard MP3 or WAV.
+                </p>
+                <button onClick={handleClose} className="btn-primary">Close</button>
+              </div>
+            </div>
+          ) : !ready ? (
             <div className="h-full grid place-items-center text-white/50">
               <div className="text-center">
                 <div className="w-8 h-8 mx-auto mb-3 rounded-full border-2 border-accent-400 border-t-transparent animate-spin" />

@@ -33,6 +33,21 @@ async function decode16k(bytes) {
   return rendered.getChannelData(0).slice()
 }
 
+/** Linear-resample already-decoded mono PCM to 16 kHz (for a separated stem). */
+function resamplePcm16k(pcm, sampleRate) {
+  if (sampleRate === 16000) return pcm.slice()
+  const ratio = sampleRate / 16000
+  const outLen = Math.max(1, Math.floor(pcm.length / ratio))
+  const out = new Float32Array(outLen)
+  for (let i = 0; i < outLen; i++) {
+    const p = i * ratio
+    const i0 = Math.floor(p)
+    const fr = p - i0
+    out[i] = pcm[i0] * (1 - fr) + (pcm[i0 + 1] || 0) * fr
+  }
+  return out
+}
+
 /** Group Whisper word chunks into lyric lines (split on pauses / punctuation / length). */
 function groupLines(chunks) {
   const words = (chunks || [])
@@ -71,14 +86,21 @@ function groupLines(chunks) {
 }
 
 /**
- * Transcribe lyrics from audio bytes.
- * @param {ArrayBuffer} bytes
+ * Transcribe lyrics.
+ * @param {ArrayBuffer | {pcm: Float32Array, sampleRate: number}} input
+ *   Pass raw file bytes (decoded here) OR an already-decoded mono PCM stem — the
+ *   AI path passes the SEPARATED VOCAL stem so Whisper reads a clean voice, not the
+ *   full mix (that's what makes lyrics legible on music).
  * @param {{onProgress?: (m:object)=>void}} [opts]
  * @returns {Promise<{lines: object[]}|null>}
  */
-export function transcribeLyrics(bytes, { onProgress } = {}) {
+export function transcribeLyrics(input, { onProgress } = {}) {
+  const prep =
+    input && input.pcm
+      ? Promise.resolve(resamplePcm16k(input.pcm, input.sampleRate || 16000))
+      : decode16k(input)
   return new Promise((resolve, reject) => {
-    decode16k(bytes)
+    prep
       .then((audio) => {
         const w = getWorker()
         const onMsg = (e) => {

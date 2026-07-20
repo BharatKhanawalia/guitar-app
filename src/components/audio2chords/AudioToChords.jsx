@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { analyzeAudio, analyzePcm } from '../../lib/chordDetect'
+import { analyzeInWorker } from '../../lib/chordWorkerClient'
 import { useStore } from '../../store.jsx'
 import MicButton from './MicButton'
 import ResultModal from './ResultModal'
@@ -48,13 +48,19 @@ export default function AudioToChords() {
     const pct = (p) => setProgress(Math.round(p * 100))
     try {
       const forPlayback = bytes.slice(0) // pristine copy for playback (full mix)
-      const forLyrics = bytes.slice(0) // pristine copy for Whisper (before AI transfers bytes)
+      const forLyrics = bytes.slice(0) // fallback copy for Whisper (raw mix, if no vocal stem)
       let res
+      let lyricsInput = null // { pcm, sampleRate } isolated vocal stem, when available
       if (engine === 'ai') {
-        res = await processAI(bytes, pct)
+        const ai = await processAI(bytes, pct)
+        res = ai.res
+        lyricsInput = ai.lyricsInput
       } else {
+        const sep = await import('../../lib/separation')
+        setPhase('Decoding')
+        const { data, sampleRate } = await sep.decodeMono(bytes, 44100)
         setPhase('Analysing')
-        res = await analyzeAudio(bytes, { engine: 'accurate', preferFlats, onProgress: pct })
+        res = await analyzeInWorker(data, sampleRate, { engine: 'accurate', preferFlats }, pct)
         res.engineLabel = 'Traditional (DSP)'
       }
       if (!res.segments.length) {
@@ -65,9 +71,9 @@ export default function AudioToChords() {
       setResult(res)
       setStatus('')
       setModalOpen(true)
-      // Auto lyrics: chords are already on screen; transcribe in the background and
-      // stream the lines into the ribbon when ready. Never blocks / never fails hard.
-      runLyrics(forLyrics)
+      // Auto lyrics: chords are already on screen; transcribe in the background.
+      // Prefer the SEPARATED VOCAL stem (AI path) so Whisper reads a clean voice.
+      runLyrics(lyricsInput || forLyrics)
     } catch (e) {
       console.error(e)
       setStatus('error')
@@ -90,6 +96,7 @@ export default function AudioToChords() {
     // we analyse the raw mix and flag it, so the tab always produces a result.
     let instrumental = data
     let separated = false
+    let vocal = null
     if (sep.hasSeparationModel()) {
       try {
         setPhase('Loading AI model (first run downloads 66 MB)')
@@ -105,6 +112,10 @@ export default function AudioToChords() {
           },
         })
         separated = true
+        // Vocal stem = mix − instrumental (residual). This is what Whisper reads.
+        const n = Math.min(data.length, instrumental.length)
+        vocal = new Float32Array(n)
+        for (let i = 0; i < n; i++) vocal[i] = data[i] - instrumental[i]
       } catch (e) {
         console.warn('AI separation failed — falling back to raw mix:', e)
         setSepNote(true)
@@ -115,20 +126,22 @@ export default function AudioToChords() {
     }
 
     setPhase('Analysing')
-    const res = await analyzePcm(instrumental, sampleRate, {
-      engine: 'accurate',
-      preferFlats,
-      onProgress: (p) => pct(0.75 + p * 0.25),
-    })
+    const res = await analyzeInWorker(
+      instrumental,
+      sampleRate,
+      { engine: 'accurate', preferFlats },
+      (p) => pct(0.75 + p * 0.25),
+    )
     res.engineLabel = separated ? 'AI Neural · vocals separated' : 'AI · raw mix (separation unavailable)'
-    return res
+    return { res, lyricsInput: vocal ? { pcm: vocal, sampleRate } : null }
   }
 
-  /** Background lyric transcription — updates result.lyrics in place when done. */
-  async function runLyrics(bytesCopy) {
+  /** Background lyric transcription — updates result.lyrics in place when done.
+   *  `input` is the isolated vocal stem {pcm, sampleRate} (AI) or raw file bytes. */
+  async function runLyrics(input) {
     try {
       const { transcribeLyrics } = await import('../../lib/whisper')
-      const lyrics = await transcribeLyrics(bytesCopy)
+      const lyrics = await transcribeLyrics(input)
       setResult((prev) => (prev ? { ...prev, lyrics, lyricsStatus: lyrics ? 'done' : 'empty' } : prev))
     } catch (e) {
       console.warn('Lyrics transcription failed — chords still work:', e)
@@ -338,32 +351,35 @@ function EngineToggle({ engine, onChange, disabled }) {
 }
 
 /**
- * Honest roadmap for the local AI engine. Real-world testing against ground-truth
- * tracks proved the DSP ceiling: on dense mixes the vocal masks the guitar so the
- * chromagram itself is corrupted. The fix is on-device source separation feeding
- * both a chord model and a lyric transcriber — all in-browser, still $0.
+ * The local AI engine. Real-world testing against ground-truth tracks showed the
+ * DSP ceiling: on dense mixes the vocal masks the guitar so the chromagram itself
+ * is corrupted. This pipeline runs on-device source separation, then reads chords
+ * from the clean instrumental and transcribes lyrics from the isolated vocal — all
+ * in the browser, still $0. Nothing is uploaded.
  */
 const AI_STAGES = [
-  { icon: '🎛️', t: 'Stem separation', d: 'On-device U-Net / Demucs-lite (ONNX Runtime Web) splits vocals from the backing track — so chords are read from the clean instrumental, not the vocal-masked mix.' },
-  { icon: '🎸', t: 'Neural chord model', d: 'A CRNN chord recogniser (Chordino/BTC-style) run on the separated instrumental — far past what template-chroma can do on real songs.' },
-  { icon: '🎤', t: 'Lyric transcription', d: 'Whisper (transformers.js) on the isolated vocal stem → time-aligned lyrics, like auto-captions. Isolating the vocal first is what makes it actually readable on music.' },
+  { icon: '🎛️', t: 'Stem separation', d: 'A UVR-MDX neural model (ONNX Runtime Web) splits vocals from the backing track on-device, so chords are read from the clean instrumental, not the vocal-masked mix.' },
+  { icon: '🎸', t: 'Chord analysis', d: 'The DSP chord engine runs on the separated instrumental — cleaner chroma than the raw mix, which is where it struggles most.' },
+  { icon: '🎤', t: 'Lyric transcription', d: 'Whisper (transformers.js) runs on the isolated vocal stem → auto-generated lyrics. Isolating the vocal first is what makes it readable over music.' },
 ]
 function AiPanel() {
-  // Read the model status without importing the heavy module eagerly.
+  // Check the model availability once, off the render path.
   const [modelReady, setModelReady] = useState(null)
-  if (modelReady === null) {
-    import('../../lib/separation').then((m) => setModelReady(m.hasSeparationModel())).catch(() => setModelReady(false))
-  }
+  useEffect(() => {
+    let alive = true
+    import('../../lib/separation')
+      .then((m) => alive && setModelReady(m.hasSeparationModel()))
+      .catch(() => alive && setModelReady(false))
+    return () => { alive = false }
+  }, [])
   return (
     <section className="glass p-5 sm:p-6 relative overflow-hidden">
       <div className="absolute -top-24 -right-16 h-56 w-56 rounded-full bg-accent-500/20 blur-3xl pointer-events-none" />
       <div className="flex items-center gap-2 mb-3">
         <span className="text-lg">🧠</span>
         <h3 className="font-bold">AI Neural pipeline (on-device separation)</h3>
-        <span
-          className={`chip !py-0.5 !px-2 text-[11px] ml-auto ${modelReady ? 'text-mint-400' : 'text-amber-300'}`}
-        >
-          {modelReady === null ? 'checking…' : modelReady ? 'model ready' : 'model not installed'}
+        <span className="chip !py-0.5 !px-2 text-[11px] ml-auto text-mint-400">
+          {modelReady === false ? 'unavailable' : 'on-device'}
         </span>
       </div>
       <div className="grid sm:grid-cols-3 gap-2.5">
@@ -383,16 +399,13 @@ function AiPanel() {
           </motion.div>
         ))}
       </div>
-      {!modelReady && (
-        <p className="text-[11px] text-white/45 mt-3 leading-relaxed">
-          The full STFT→mask→ISTFT separation pipeline is wired and verified. Until a separation
-          model (<span className="font-mono">.onnx</span>) is placed in{' '}
-          <span className="font-mono text-white/60">public/models/</span> and set as{' '}
-          <span className="font-mono text-white/60">MODEL_URL</span>, dropping a track here still
-          runs the AI pipeline but on the <span className="text-white/70">raw mix</span> — it will
-          tell you so in the result.
-        </p>
-      )}
+      <p className="text-[11px] text-white/45 mt-3 leading-relaxed">
+        Heads up: the first AI run <span className="text-white/70">downloads a ~66 MB separation model</span>{' '}
+        (plus the Whisper lyric model on demand) and caches it in your browser. Separation runs entirely
+        on your device — nothing is uploaded — but it&rsquo;s CPU-heavy and can take a minute or two per song.
+        On a dense mix where separation can&rsquo;t cleanly isolate the guitar, results still improve but
+        aren&rsquo;t perfect.
+      </p>
     </section>
   )
 }

@@ -15,6 +15,7 @@ const ARStudio = lazy(() => import('./components/ARStudio'))
 const AudioToChords = lazy(() => import('./components/audio2chords/AudioToChords'))
 import EnharmonicToggle from './components/EnharmonicToggle'
 import FretboardDiagram from './components/FretboardDiagram'
+import ErrorBoundary from './components/ErrorBoundary'
 import { isChord, respellChord } from './lib/chordTheory'
 import { useStore } from './store.jsx'
 
@@ -121,6 +122,7 @@ export default function App() {
             animate="animate"
             transition={{ duration: 0.28 }}
           >
+           <ErrorBoundary label="This section">
             {tab === 'capo' && (
               <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-6 items-start">
                 {/* Left: input */}
@@ -185,15 +187,17 @@ export default function App() {
             {tab === 'strum' && <StrummingStudio />}
 
             {tab === 'audio' && (
-              <Suspense
-                fallback={
-                  <div className="glass p-10 text-center text-white/50 max-w-3xl mx-auto">
-                    Loading Audio → Chords…
-                  </div>
-                }
-              >
-                <AudioToChords />
-              </Suspense>
+              <ErrorBoundary label="Audio → Chords">
+                <Suspense
+                  fallback={
+                    <div className="glass p-10 text-center text-white/50 max-w-3xl mx-auto">
+                      Loading Audio → Chords…
+                    </div>
+                  }
+                >
+                  <AudioToChords />
+                </Suspense>
+              </ErrorBoundary>
             )}
 
             {tab === 'tuner' && (
@@ -203,16 +207,19 @@ export default function App() {
             )}
 
             {tab === 'ar' && (
-              <Suspense
-                fallback={
-                  <div className="glass p-10 text-center text-white/50 max-w-4xl mx-auto">
-                    Loading AR Studio…
-                  </div>
-                }
-              >
-                <ARStudio />
-              </Suspense>
+              <ErrorBoundary label="AR Studio">
+                <Suspense
+                  fallback={
+                    <div className="glass p-10 text-center text-white/50 max-w-4xl mx-auto">
+                      Loading AR Studio…
+                    </div>
+                  }
+                >
+                  <ARStudio />
+                </Suspense>
+              </ErrorBoundary>
             )}
+           </ErrorBoundary>
           </motion.div>
         </div>
 

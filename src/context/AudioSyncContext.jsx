@@ -21,6 +21,7 @@ export function AudioSyncProvider({ result, audioBytes, preferFlats, children })
   const engine = engineRef.current
 
   const [ready, setReady] = useState(false)
+  const [loadError, setLoadError] = useState(null)
   const [playing, setPlaying] = useState(false)
   const [time, setTime] = useState(0)
   const [rate, setRateState] = useState(1)
@@ -43,7 +44,15 @@ export function AudioSyncProvider({ result, audioBytes, preferFlats, children })
   // --- Load audio once. ---
   useEffect(() => {
     let alive = true
-    engine.load(audioBytes.slice(0)).then(() => alive && setReady(true))
+    engine
+      .load(audioBytes.slice(0))
+      .then(() => alive && setReady(true))
+      .catch((err) => {
+        // Corrupt bytes / unsupported codec / empty buffer — surface it instead of
+        // spinning "Preparing playback…" forever.
+        console.error('Audio decode failed:', err)
+        if (alive) setLoadError(err?.message || 'This audio could not be decoded for playback.')
+      })
     engine.onEnded(() => {
       setPlaying(false)
       setTime(engine.duration)
@@ -293,7 +302,7 @@ export function AudioSyncProvider({ result, audioBytes, preferFlats, children })
   const resetKey = useCallback(() => setKeyForce(null), [])
 
   const value = {
-    ready, playing, time, duration, rate, semitones, volume, suppress, bpm,
+    ready, loadError, playing, time, duration, rate, semitones, volume, suppress, bpm,
     segments, activeIndex,
     meter, setMeter,
     beatShift, nudgeBeat, resetBeat,
