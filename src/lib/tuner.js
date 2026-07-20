@@ -110,10 +110,21 @@ function median(arr) {
  * Returns a stop() function.
  */
 export async function createTuner(onPitch) {
+  // Insecure context (http, not localhost) → mediaDevices is undefined. Fail with a
+  // clear, catchable error rather than a confusing "undefined" TypeError.
+  if (!navigator.mediaDevices?.getUserMedia) {
+    const err = new Error('insecure-context')
+    err.name = 'InsecureContextError'
+    throw err
+  }
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: { echoCancellation: false, autoGainControl: false, noiseSuppression: false },
   })
   const ctx = new (window.AudioContext || window.webkitAudioContext)()
+  // iOS Safari (and some autoplay states) start the context SUSPENDED — without an
+  // explicit resume the analyser never runs and the tuner shows nothing. We're
+  // inside a user-gesture-triggered call, so this is allowed.
+  try { await ctx.resume() } catch { /* best effort */ }
   const source = ctx.createMediaStreamSource(stream)
 
   // --- Band-pass the stream to guitar range (≈80–1200 Hz) ---------------

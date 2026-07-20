@@ -49,6 +49,39 @@ function linesFromSong(song) {
   })
 }
 
+// Greedily split a token into consecutive chords, e.g. "AmDm" → ['Am','Dm'],
+// "CGEm" → ['C','G','Em']. Returns null if the token isn't a clean run of chords
+// (so ordinary words like "Dead" or "Face" are never touched).
+const CHORD_RE = /^[A-G][#b]?(maj7|maj9|maj|min|m7b5|m7|m9|m6|m|dim7|dim|aug|sus2|sus4|sus|add9|6|7|9|11|13|2|5)?(\/[A-G][#b]?)?/
+function splitConcatChords(token) {
+  const out = []
+  let s = token
+  while (s.length) {
+    const m = s.match(CHORD_RE)
+    if (!m || !m[0]) return null
+    out.push(m[0])
+    s = s.slice(m[0].length)
+  }
+  return out.length > 1 ? out : null
+}
+
+// Insert spaces between chords that were pasted stuck together — but ONLY on lines
+// that are entirely chords / section tags (a chord line or header). Lyric prose is
+// never altered, and existing whitespace/alignment is preserved.
+function autoSpaceChords(line) {
+  const toks = line.trim().split(/\s+/).filter(Boolean)
+  if (!toks.length) return line
+  const allChordish = toks.every(
+    (t) => /^\[.*\]$/.test(t) || isChord(t) || splitConcatChords(t),
+  )
+  if (!allChordish) return line
+  return line.replace(/[A-G][^\s]*/g, (tok) => {
+    if (isChord(tok)) return tok
+    const s = splitConcatChords(tok)
+    return s ? s.join(' ') : tok
+  })
+}
+
 export function parseChordSheet(raw) {
   if (!raw || !raw.trim()) return { lines: [] }
 
@@ -72,7 +105,7 @@ export function parseChordSheet(raw) {
       flush()
       out.push({ type: 'tab', text: rl, pairs: [] })
     } else {
-      buffer.push(rl)
+      buffer.push(autoSpaceChords(rl))
     }
   }
   flush()

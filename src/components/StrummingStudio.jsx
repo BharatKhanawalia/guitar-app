@@ -39,8 +39,8 @@ const LIBRARY = {
     // Exact user layout: D · U · D · · D · D U · D · · ·
     { name: 'DUD DDUD', seq: ['D', '', 'U', '', 'D', '', '', 'D', '', 'D', 'U', '', 'D', '', '', ''], sub: 4, feel: 'driving pop/rock' },
     { name: 'Down–Up 8ths', seq: ['D', 'U', 'D', 'U', 'D', 'U', 'D', 'U'], sub: 2, feel: 'steady alternating driver' },
-    // Exact user layout: D · D U · U D U
-    { name: 'Folk / Ballad', seq: ['D', '', 'D', 'U', '', 'U', 'D', 'U'], sub: 4, feel: 'gentle, flowing' },
+    // D · D U D · D U — the classic "D DU D DU", a different staple from D DU UDU.
+    { name: 'D DU D DU', seq: ['D', '', 'D', 'U', 'D', '', 'D', 'U'], sub: 4, feel: 'steady pop/folk staple' },
   ],
   Uncommon: [
     // Bob Marley — "One Love" skank.
@@ -261,8 +261,8 @@ function CustomSequencer({ mode, chord }) {
         <span className="chip text-white/50 text-xs">step sequencer</span>
       </div>
       <p className="text-xs text-white/40 mb-5">
-        Tap a pad to cycle <span className="text-accent-300 font-semibold">↓ Down</span> →{' '}
-        <span className="text-mint-300 font-semibold">↑ Up</span> →{' '}
+        Tap a pad to cycle <span className="text-accent-400 font-semibold">↓ Down</span> →{' '}
+        <span className="text-mint-400 font-semibold">↑ Up</span> →{' '}
         <span className="text-rose-300 font-semibold">✕ Chuck</span> →{' '}
         <span className="text-white/40 font-semibold">— Rest</span>. Strokes are performed with real
         human phrasing — emphasis &amp; feel adapt to the rhythm.
@@ -430,10 +430,14 @@ export default function StrummingStudio() {
       <div className="glass p-5 sm:p-6">
         <div className="flex items-center justify-between mb-1">
           <h2 className="font-bold text-lg">Strumming Studio</h2>
-          <span className="chip text-white/50 text-xs">percussive practice · muted chucks</span>
+          <span className="chip text-white/50 text-xs">
+            {mode === 'chord' ? 'ringing chords · real strums' : 'percussive practice · muted chucks'}
+          </span>
         </div>
         <p className="text-xs text-white/40 mb-5">
-          Pick a pattern, hit play, and lock the groove into your strumming hand.
+          {mode === 'chord'
+            ? 'Pick a pattern and a chord, hit play, and hear the full strum in time.'
+            : 'Pick a pattern, hit play, and lock the groove into your strumming hand.'}
         </p>
 
         {/* Sound mode: muted chucks vs a real ringing chord */}

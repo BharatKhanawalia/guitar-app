@@ -45,22 +45,22 @@ function urlsFor(list) {
 export const INSTRUMENTS = {
   // Exact replica of sound.gojaehyun.com's pad: a gliding oscillator bank →
   // ~1.8 kHz lowpass, DRY (no reverb/chorus) for its loud, sharp character.
-  woo: { label: 'Woo ✨ (default)', kind: 'woo', filter: 1800, chorus: 0, reverb: 0 },
-  piano: { label: 'Grand Piano 🎹', kind: 'sample', src: CDN + 'piano/', urls: urlsFor(SAMPLE_MAPS.piano), release: 1.2, filter: 12000, chorus: 0.08, reverb: 0.28 },
+  woo: { label: 'Woo (default)', kind: 'woo', filter: 1800, chorus: 0, reverb: 0 },
+  piano: { label: 'Grand Piano', kind: 'sample', src: CDN + 'piano/', urls: urlsFor(SAMPLE_MAPS.piano), release: 1.2, filter: 12000, chorus: 0.08, reverb: 0.28 },
   epiano: {
     label: 'Electric Piano', kind: 'synth', voice: 'FMSynth',
     options: { harmonicity: 3, modulationIndex: 12, oscillator: { type: 'sine' }, envelope: { attack: 0.002, decay: 1.6, sustain: 0.08, release: 1.1 }, modulation: { type: 'sine' }, modulationEnvelope: { attack: 0.002, decay: 0.35, sustain: 0.1, release: 0.3 } },
     filter: 5200, chorus: 0.3, reverb: 0.35, trem: 0.12,
   },
-  guitar: { label: 'Acoustic Guitar 🎸', kind: 'sample', src: '/samples/guitar-acoustic/', manifest: true, strum: true, release: 1.2, filter: 12000, chorus: 0.1, reverb: 0.28 },
+  guitar: { label: 'Acoustic Guitar', kind: 'sample', src: '/samples/guitar-acoustic/', manifest: true, strum: true, release: 1.2, filter: 12000, chorus: 0.1, reverb: 0.28 },
   guitarE: { label: 'Electric Guitar', kind: 'sample', src: CDN + 'guitar-electric/', urls: urlsFor(SAMPLE_MAPS['guitar-electric']), strum: true, release: 1.4, filter: 11000, chorus: 0.15, reverb: 0.3 },
-  harmonium: { label: 'Harmonium 🪗 (real)', kind: 'sample', src: CDN + 'harmonium/', urls: urlsFor(SAMPLE_MAPS.harmonium), release: 0.5, filter: 12000, chorus: 0.12, reverb: 0.3 },
-  organ: { label: 'Organ (real)', kind: 'sample', src: CDN + 'organ/', urls: urlsFor(SAMPLE_MAPS.organ), release: 0.3, filter: 12000, chorus: 0.2, reverb: 0.28 },
-  violin: { label: 'Violin (real)', kind: 'sample', src: CDN + 'violin/', urls: urlsFor(SAMPLE_MAPS.violin), release: 0.8, filter: 12000, chorus: 0.15, reverb: 0.4 },
-  cello: { label: 'Cello (real)', kind: 'sample', src: CDN + 'cello/', urls: urlsFor(SAMPLE_MAPS.cello), release: 0.9, filter: 12000, chorus: 0.15, reverb: 0.42 },
-  harp: { label: 'Harp (real)', kind: 'sample', src: CDN + 'harp/', urls: urlsFor(SAMPLE_MAPS.harp), release: 1.6, filter: 12000, chorus: 0.12, reverb: 0.45 },
-  flute: { label: 'Flute (real)', kind: 'sample', src: CDN + 'flute/', urls: urlsFor(SAMPLE_MAPS.flute), release: 0.6, filter: 12000, chorus: 0.12, reverb: 0.4 },
-  sax: { label: 'Saxophone (real)', kind: 'sample', src: CDN + 'saxophone/', urls: urlsFor(SAMPLE_MAPS.saxophone), release: 0.5, filter: 12000, chorus: 0.12, reverb: 0.35 },
+  harmonium: { label: 'Harmonium', kind: 'sample', src: CDN + 'harmonium/', urls: urlsFor(SAMPLE_MAPS.harmonium), release: 0.5, filter: 12000, chorus: 0.12, reverb: 0.3 },
+  organ: { label: 'Organ', kind: 'sample', src: CDN + 'organ/', urls: urlsFor(SAMPLE_MAPS.organ), release: 0.3, filter: 12000, chorus: 0.2, reverb: 0.28 },
+  violin: { label: 'Violin', kind: 'sample', src: CDN + 'violin/', urls: urlsFor(SAMPLE_MAPS.violin), release: 0.8, filter: 12000, chorus: 0.15, reverb: 0.4 },
+  cello: { label: 'Cello', kind: 'sample', src: CDN + 'cello/', urls: urlsFor(SAMPLE_MAPS.cello), release: 0.9, filter: 12000, chorus: 0.15, reverb: 0.42 },
+  harp: { label: 'Harp', kind: 'sample', src: CDN + 'harp/', urls: urlsFor(SAMPLE_MAPS.harp), release: 1.6, filter: 12000, chorus: 0.12, reverb: 0.45 },
+  flute: { label: 'Flute', kind: 'sample', src: CDN + 'flute/', urls: urlsFor(SAMPLE_MAPS.flute), release: 0.6, filter: 12000, chorus: 0.12, reverb: 0.4 },
+  sax: { label: 'Saxophone', kind: 'sample', src: CDN + 'saxophone/', urls: urlsFor(SAMPLE_MAPS.saxophone), release: 0.5, filter: 12000, chorus: 0.12, reverb: 0.35 },
   // Aurora = a DARK, WET, slow-swelling sine pad (ambient).
   aurora: {
     label: 'Aurora Pad', kind: 'synth', voice: 'Synth',
@@ -82,7 +82,7 @@ export const WAVES = ['sine', 'triangle', 'sawtooth', 'square']
 /* ------------------------------------------------------------------ */
 /* Shared FX bus                                                       */
 /* ------------------------------------------------------------------ */
-let filter, vibrato, tremolo, chorus, reverb, masterVol, limiter
+let filter, vibrato, tremolo, chorus, reverb, masterVol, limiter, meter, recDest
 let current = null
 let currentName = 'woo'
 let ready = false
@@ -124,14 +124,17 @@ async function makeSampler(preset) {
   sampler.connect(filter)
   const strum = !!preset.strum
   const STAG = 0.022 // per-string micro-delay for a real downstroke rake
-  // For a strummed instrument, add a bass root an octave below the lowest note so
-  // a locked chord reads as a full 4-5 string strum, not a thin triad.
+  // For a strummed instrument (acoustic AND electric guitar), voice a full 5-6
+  // string chord: a bass root an octave below + a high root an octave above the
+  // triad, so a locked chord reads as a rich strum, not a thin single note.
   const voice = (notes) => {
     const arr = Array.isArray(notes) ? notes : [notes]
     if (!strum || arr.length < 2) return arr
-    const midi = Note.midi(arr[0])
-    const bass = midi != null ? Note.fromMidi(midi - 12) : null
-    return bass ? [bass, ...arr] : arr
+    const lowM = Note.midi(arr[0])
+    const out = arr.slice()
+    if (lowM != null) out.unshift(Note.fromMidi(lowM - 12)) // low bass string
+    if (lowM != null) out.push(Note.fromMidi(lowM + 12)) // high jangly octave
+    return out
   }
   return {
     triggerAttack: (notes, t) => {
@@ -163,23 +166,35 @@ function makeWoo() {
     return { osc, gain }
   }
   const ensureBank = () => { if (!bank.length) bank = Array.from({ length: MAX_CHORD_VOICES }, mkVoice) }
+  // exponentialRampTo glides pitch at constant cents/sec → a musical, audibly
+  // CONNECTED portamento between chords. A voice that was silent swells in with a
+  // gentle curved fade (setTargetAtTime), so the attack from zero is smooth, not a
+  // hard step. GLIDE_S is a touch longer for a clearly connected slide.
+  const GLIDE_S = 0.18
+  const FADE_S = 0.12
+  const swellIn = (g) => {
+    // If the voice is essentially silent, ease it in with a smooth exponential
+    // approach (beautiful fade-in curve); otherwise just hold the level.
+    if (g.gain.value < 0.02) g.gain.setTargetAtTime(WOO_LEVEL, Tone.now(), FADE_S / 3)
+    else g.gain.rampTo(WOO_LEVEL, FADE_S)
+  }
   const attackChord = (notes) => {
     ensureBank()
     notes.slice(0, MAX_CHORD_VOICES).forEach((n, i) => {
       const f = Note.freq(n)
       if (f) {
-        bank[i].osc.frequency.rampTo(f, 0.12) // pitch GLIDE between chords
-        bank[i].gain.gain.rampTo(WOO_LEVEL, 0.06)
+        bank[i].osc.frequency.exponentialRampTo(f, GLIDE_S) // connected pitch glide
+        swellIn(bank[i].gain)
       }
     })
-    for (let i = notes.length; i < MAX_CHORD_VOICES; i++) bank[i].gain.gain.rampTo(0, 0.08)
+    for (let i = notes.length; i < MAX_CHORD_VOICES; i++) bank[i].gain.gain.rampTo(0, 0.1)
   }
   const attackMel = (n) => {
     if (!mel) mel = mkVoice()
     const f = Note.freq(n)
     if (f) {
-      mel.osc.frequency.rampTo(f, 0.05)
-      mel.gain.gain.rampTo(WOO_LEVEL, 0.04)
+      mel.osc.frequency.exponentialRampTo(f, 0.08)
+      swellIn(mel.gain)
     }
   }
   const disposeVoice = (v) => { try { v.osc.stop(); v.osc.dispose(); v.gain.dispose() } catch { /* disposed */ } }
@@ -219,6 +234,8 @@ export async function boot() {
   booting = (async () => {
     await Tone.start()
     limiter = new Tone.Limiter(-1).toDestination()
+    meter = new Tone.Meter({ smoothing: 0.85 }) // real output level (dB) for the HUD
+    limiter.connect(meter)
     masterVol = new Tone.Volume(0).connect(limiter)
     reverb = new Tone.Reverb({ decay: 4, wet: 0.5 }).connect(masterVol)
     chorus = new Tone.Chorus(1.2, 3.5, 0.5).start().connect(reverb)
@@ -256,7 +273,7 @@ export async function setWave(w) {
 }
 
 export function setVolume(db) {
-  if (masterVol) masterVol.volume.value = db
+  if (masterVol) masterVol.volume.rampTo(db, 0.05)
 }
 
 export async function holdChord(notes) {
@@ -334,4 +351,47 @@ export function scaleNotes(tonic, scaleName, octaves = 2, startOctave = 3) {
 
 export function isReady() {
   return ready
+}
+
+/** Real output level in dB (from the master meter), or -Infinity when silent/unbooted. */
+export function getLevel() {
+  if (!meter) return -Infinity
+  const v = meter.getValue()
+  return typeof v === 'number' ? v : -Infinity
+}
+
+/** A live MediaStream of the master audio output (for recording). Lazily tapped. */
+export function getAudioStream() {
+  if (!ready || !limiter) return null
+  if (!recDest) {
+    recDest = Tone.getContext().rawContext.createMediaStreamDestination()
+    limiter.connect(recDest)
+  }
+  return recDest.stream
+}
+
+let micNode = null
+let micGain = null
+
+/** Mix a microphone stream INTO the recording tap only (captured, not played back —
+ *  so your singing is recorded alongside the instruments with no speaker feedback).
+ *  The voice is lifted a touch so it sits alongside the instruments. */
+export function attachMic(micStream) {
+  if (!ready) return
+  detachMic()
+  const raw = Tone.getContext().rawContext
+  if (!recDest) {
+    recDest = raw.createMediaStreamDestination()
+    limiter.connect(recDest)
+  }
+  micNode = raw.createMediaStreamSource(micStream)
+  micGain = raw.createGain()
+  micGain.gain.value = 2.2 // lift a typically-quiet mic up near the instruments
+  micNode.connect(micGain)
+  micGain.connect(recDest) // → recording only, NOT to speakers
+}
+
+export function detachMic() {
+  for (const n of [micNode, micGain]) { try { n?.disconnect() } catch { /* noop */ } }
+  micNode = micGain = null
 }

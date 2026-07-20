@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import FretboardDiagram from './FretboardDiagram'
-import { playChord } from '../lib/audioEngine'
+import { playChordShifted } from '../lib/audioEngine'
 
 /**
  * ChordModal — the click-to-open detail dialog for a capo position.
@@ -97,7 +97,9 @@ export default function ChordModal({ result, onClose }) {
               <button
                 onClick={() =>
                   result.chords.forEach((c, i) =>
-                    setTimeout(() => playChord(c), i * 320),
+                    // Play the CAPO'd sound: this shape's voicing moved up by the
+                    // capo fret — what you'd actually hear on the guitar.
+                    setTimeout(() => playChordShifted(c, result.capo), i * 320),
                   )
                 }
                 className="btn-primary !py-1.5 text-sm"
@@ -114,7 +116,7 @@ export default function ChordModal({ result, onClose }) {
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.04 }}
-                  onClick={() => playChord(chord)}
+                  onClick={() => playChordShifted(chord, result.capo)}
                   className="group glass-soft p-3 flex flex-col items-center hover:bg-accent-500/10 hover:border-accent-400/40 transition-colors active:scale-95"
                 >
                   <span className="font-mono font-bold text-accent-400 mb-1">{chord}</span>

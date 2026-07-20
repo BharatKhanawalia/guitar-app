@@ -254,6 +254,30 @@ export async function playChord(symbol, { direction = 'down', velocity = 0.85 } 
   })
 }
 
+/**
+ * Play a chord SHAPE as it sounds with a capo — i.e. its actual open-shape voicing
+ * moved up `semitones` frets, note-for-note. This is NOT the same as playing the
+ * transposed chord's own open voicing: an A shape at capo 3 rings out as a C, but
+ * voiced (register + string spacing) like an A, so it sounds subtly different from
+ * an open C. `semitones = 0` is identical to playChord().
+ */
+export async function playChordShifted(symbol, semitones = 0, { direction = 'down', velocity = 0.85 } = {}) {
+  if (!semitones) return playChord(symbol, { direction, velocity })
+  await ensureSamples()
+  const notes = voiceChord(symbol)
+    .map((n) => { const m = Note.midi(n); return m == null ? null : Note.fromMidi(m + semitones) })
+    .filter(Boolean)
+  if (!notes.length) return
+  const ordered = direction === 'up' ? [...notes].reverse() : notes
+  const now = Tone.now() + 0.02
+  const stagger = 0.028
+  const src = usingSampler && sampler ? sampler : synth
+  ordered.forEach((note, i) => {
+    const v = velocity * (0.82 + Math.random() * 0.18)
+    src.triggerAttackRelease(note, '2n', now + i * stagger, v)
+  })
+}
+
 /* ------------------------------------------------------------------ */
 /* Sustained chord — held down until explicitly released.              */
 /* Used by AR Studio: the chord rings out for as long as your finger   */

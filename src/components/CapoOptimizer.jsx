@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { optimizeCapo } from '../lib/chordTheory'
-import { playChord } from '../lib/audioEngine'
+import { playChordShifted } from '../lib/audioEngine'
 import ChordModal from './ChordModal'
 
 const container = {
@@ -13,13 +13,16 @@ const card = {
   show: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 260, damping: 22 } },
 }
 
-/** A tappable chord pill. Stops propagation so it doesn't also open the modal. */
-function ChordTag({ chord }) {
+/** A tappable chord pill. Stops propagation so it doesn't also open the modal.
+ *  With a `capo` fret > 0 it plays the chord PITCH-SHIFTED up that many semitones —
+ *  i.e. exactly what the shape sounds like with a capo on that fret (so an A shape
+ *  at capo 3 sounds like C, not open A). Capo-0 / original shapes play as written. */
+function ChordTag({ chord, capo = 0 }) {
   return (
     <button
       onClick={(e) => {
         e.stopPropagation()
-        playChord(chord)
+        playChordShifted(chord, capo) // capo>0 → shape's voicing moved up = real capo sound
       }}
       className="font-mono text-sm px-2 py-1 rounded-lg bg-white/5 hover:bg-accent-500/30 transition-colors active:scale-90"
     >
@@ -79,7 +82,7 @@ export default function CapoOptimizer({ chords, preferFlats }) {
             </div>
             <div className="font-mono text-white/90 flex flex-wrap gap-1.5 sm:ml-auto">
               {original.chords.map((c, i) => (
-                <ChordTag key={`orig-${c}-${i}`} chord={c} />
+                <ChordTag key={`orig-${c}-${i}`} chord={c} capo={0} />
               ))}
             </div>
           </div>
@@ -118,7 +121,7 @@ export default function CapoOptimizer({ chords, preferFlats }) {
               </div>
               <div className="font-mono text-white/90 flex flex-wrap gap-1.5 sm:ml-auto">
                 {best.chords.map((c, i) => (
-                  <ChordTag key={`${c}-${i}`} chord={c} />
+                  <ChordTag key={`${c}-${i}`} chord={c} capo={best.capo} />
                 ))}
               </div>
             </div>
@@ -171,7 +174,7 @@ export default function CapoOptimizer({ chords, preferFlats }) {
 
               <div className="flex flex-wrap gap-1.5 mb-3">
                 {r.chords.map((c, i) => (
-                  <ChordTag key={`${r.capo}-${c}-${i}`} chord={c} />
+                  <ChordTag key={`${r.capo}-${c}-${i}`} chord={c} capo={r.capo} />
                 ))}
               </div>
 

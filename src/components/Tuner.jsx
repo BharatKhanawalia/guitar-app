@@ -19,8 +19,8 @@ export default function Tuner() {
     try {
       stopRef.current = await createTuner(setPitch)
       setActive(true)
-    } catch {
-      setError('Microphone access denied. Allow mic permission to use the tuner.')
+    } catch (e) {
+      setError(micErrorMessage(e))
     }
   }
 
@@ -55,8 +55,8 @@ export default function Tuner() {
     <div className="glass p-6 sm:p-8 flex flex-col items-center">
       <div className="flex items-center justify-between w-full mb-2">
         <div>
-          <h3 className="font-bold text-lg">Pro Tuner</h3>
-          <p className="text-xs text-white/40">YIN pitch detection · band-pass filtered · 80–1200 Hz</p>
+          <h3 className="font-bold text-lg">Guitar Tuner</h3>
+          <p className="text-xs text-white/40">Pluck a string — we listen and show you exactly how to tune it.</p>
         </div>
         <button onClick={active ? stop : start} className={active ? 'btn-ghost' : 'btn-primary'}>
           {active ? '■ Stop' : '● Start'}
@@ -125,4 +125,22 @@ export default function Tuner() {
       </div>
     </div>
   )
+}
+
+/** Turn a getUserMedia / context error into a specific, actionable message. */
+function micErrorMessage(e) {
+  switch (e?.name) {
+    case 'NotAllowedError':
+    case 'SecurityError':
+      return 'Microphone permission was blocked. Allow mic access in your browser and try again.'
+    case 'NotFoundError':
+    case 'OverconstrainedError':
+      return 'No microphone found. Plug one in (or check your device settings) and try again.'
+    case 'NotReadableError':
+      return 'Your microphone is busy in another app or tab. Close it and try again.'
+    case 'InsecureContextError':
+      return 'The tuner needs a secure connection (https). Open the site over https and try again.'
+    default:
+      return 'Could not start the microphone. Check your browser’s mic settings and try again.'
+  }
 }

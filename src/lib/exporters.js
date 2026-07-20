@@ -26,23 +26,31 @@ export async function exportPDF(title, lines, meta = {}) {
   const margin = 48
   let y = margin
 
+  const heading = title || 'Chord Sheet'
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(18)
-  doc.text(title || 'CapoFlow Chord Sheet', margin, y)
-  y += 20
+  doc.setFontSize(22)
+  doc.setTextColor(20)
+  doc.text(heading, margin, y)
+  y += 22
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(10)
-  doc.setTextColor(120)
-  const sub = [meta.key && `Key: ${meta.key}`, meta.capo != null && `Capo: ${meta.capo}`]
-    .filter(Boolean)
-    .join('    ')
+  doc.setTextColor(124, 58, 237) // accent
+  const sub = [
+    heading !== 'Chord Sheet' && 'Chord Sheet',
+    meta.key && `Key of ${meta.key}`,
+    meta.capo ? `Capo ${meta.capo}` : null,
+  ].filter(Boolean).join('   ·   ')
   if (sub) {
     doc.text(sub, margin, y)
-    y += 18
+    y += 14
   }
+  // thin divider under the title block
+  doc.setDrawColor(210)
+  doc.setLineWidth(0.7)
+  doc.line(margin, y, doc.internal.pageSize.getWidth() - margin, y)
   doc.setTextColor(30)
-  y += 8
+  y += 20
 
   const pageH = doc.internal.pageSize.getHeight()
   const lineH = 14
@@ -70,16 +78,20 @@ export async function exportPDF(title, lines, meta = {}) {
 export async function exportDOCX(title, lines, meta = {}) {
   const { Document, Packer, Paragraph, TextRun } = await import('docx')
 
+  const heading = title || 'Chord Sheet'
   const children = [
     new Paragraph({
-      children: [new TextRun({ text: title || 'CapoFlow Chord Sheet', bold: true, size: 32 })],
+      spacing: { after: 60 },
+      children: [new TextRun({ text: heading, bold: true, size: 40 })],
     }),
   ]
-  const sub = [meta.key && `Key: ${meta.key}`, meta.capo != null && `Capo: ${meta.capo}`]
-    .filter(Boolean)
-    .join('    ')
+  const sub = [
+    heading !== 'Chord Sheet' && 'Chord Sheet',
+    meta.key && `Key of ${meta.key}`,
+    meta.capo ? `Capo ${meta.capo}` : null,
+  ].filter(Boolean).join('   ·   ')
   if (sub) {
-    children.push(new Paragraph({ children: [new TextRun({ text: sub, color: '888888', size: 20 })] }))
+    children.push(new Paragraph({ children: [new TextRun({ text: sub, color: '7C3AED', size: 20 })] }))
   }
   children.push(new Paragraph({ text: '' }))
 
@@ -115,4 +127,4 @@ function triggerDownload(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-const safe = (s) => (s || 'capoflow-sheet').replace(/[^\w-]+/g, '_').slice(0, 60)
+const safe = (s) => (s || 'chord-sheet').replace(/[^\w-]+/g, '_').slice(0, 60)

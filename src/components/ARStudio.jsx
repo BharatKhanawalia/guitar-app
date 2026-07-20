@@ -12,6 +12,10 @@ import {
   setInstrument,
   setWave,
   setVolume,
+  getLevel,
+  getAudioStream,
+  attachMic,
+  detachMic,
   chordNotes,
   scaleNotes,
   INSTRUMENTS,
@@ -75,6 +79,8 @@ const INNER = 0.34
 // detection at ~24 fps and request a small 480p feed — smooth enough for gestures,
 // dramatically cooler.
 const DETECT_INTERVAL = 42 // ms → ~24 fps
+const REC_W = 960 // composite video recording size (4:3)
+const REC_H = 720
 const LOCK_MS = 120
 const RELEASE_MS = 100
 const PINCH = 0.06
@@ -292,6 +298,24 @@ export default function ARStudio() {
   const [volume, setVol] = useState(0) // 0 dB = max by default
   const [showHelp, setShowHelp] = useState(false)
   const [entered, setEntered] = useState(false) // full-screen studio overlay
+  const [level, setLevel] = useState(-Infinity) // real output level (dB) for the HUD
+
+  // Recording
+  const [recording, setRecording] = useState(false)
+  const [recMode, setRecMode] = useState('video') // 'video' | 'audio'
+  const [recSecs, setRecSecs] = useState(0)
+  const [preparing, setPreparing] = useState(false) // encoding on stop
+  const [clip, setClip] = useState(null) // { url, blob, ext, mode, name } — one, kept in the UI
+  const [recDialog, setRecDialog] = useState(null) // in-app confirm { title, body, onDownload, onDiscard, onCancel }
+  const recRef = useRef(null) // MediaRecorder
+  const recChunks = useRef([])
+  const recTimer = useRef(null)
+  const recCountdown = useRef(null)
+  const micStreamRef = useRef(null)
+  const recCanvasRef = useRef(null) // offscreen composite canvas for video
+  const svgRef = useRef(null) // the overlay SVG (rings/bar/piano) to bake into video
+  const svgImgRef = useRef(null) // cached rasterised SVG
+  const compositeRaf = useRef(null)
 
   const [sel, setSel] = useState({ root: -1, quality: -1, chord: null, playing: false, melody: -1, note: null, hands: 0, rPinch: false })
 
@@ -497,6 +521,14 @@ export default function ARStudio() {
   const stop = useCallback(() => {
     cancelAnimationFrame(rafRef.current)
     stopAll()
+    // End any active recording (its onstop handler finalises + downloads the clip).
+    try { if (recRef.current && recRef.current.state !== 'inactive') recRef.current.stop() } catch { /* noop */ }
+    clearTimeout(recTimer.current)
+    clearInterval(recCountdown.current)
+    cancelAnimationFrame(compositeRaf.current)
+    compositeRaf.current = null
+    detachMic()
+    if (micStreamRef.current) { micStreamRef.current.getTracks().forEach((t) => t.stop()); micStreamRef.current = null }
     landmarkerRef.current?.close?.()
     landmarkerRef.current = null
     lastVideoTime.current = -1
@@ -508,15 +540,204 @@ export default function ARStudio() {
   }, [])
 
   useEffect(() => () => stop(), [stop])
-  const exit = useCallback(() => { stop(); setEntered(false) }, [stop])
-  // Esc exits the full-screen studio.
+
+  // Leaving the studio with an unsaved clip → in-app dialog (download or discard).
+  const doExit = () => { stop(); setEntered(false) }
+  const exit = () => {
+    if (recording) { stopRecording(); doExit(); return }
+    if (clip) {
+      setRecDialog({
+        title: 'You have a recording',
+        body: 'Download your recording before leaving, or discard it?',
+        onDownload: () => { saveClip(clip); deleteClip(); setRecDialog(null); doExit() },
+        onDiscard: () => { deleteClip(); setRecDialog(null); doExit() },
+        onCancel: () => setRecDialog(null),
+      })
+      return
+    }
+    doExit()
+  }
+  const exitRef = useRef(exit)
+  exitRef.current = exit
+
+  // Poll the real output level (dB) for the HUD while the studio is live.
+  useEffect(() => {
+    if (!entered || !active) { setLevel(-Infinity); return }
+    const id = setInterval(() => setLevel(getLevel()), 150)
+    return () => clearInterval(id)
+  }, [entered, active])
+
+  /* ---- Recording (video or audio · mic + system audio · 60s · one clip) ---- */
+  const pickMime = (list) =>
+    (window.MediaRecorder && list.find((m) => MediaRecorder.isTypeSupported(m))) || ''
+
+  const saveClip = (c) => {
+    if (!c) return
+    const a = document.createElement('a')
+    a.href = c.url
+    a.download = c.name
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+  }
+  const deleteClip = () => setClip((c) => { if (c?.url) setTimeout(() => URL.revokeObjectURL(c.url), 200); return null })
+
+  const cleanupMic = () => {
+    detachMic()
+    if (micStreamRef.current) { micStreamRef.current.getTracks().forEach((t) => t.stop()); micStreamRef.current = null }
+  }
+  const stopComposite = () => { cancelAnimationFrame(compositeRaf.current); compositeRaf.current = null }
+
+  // Rasterise the overlay SVG (rings / bar / piano) so it can be baked into the video.
+  const serializeSvg = () => {
+    const svg = svgRef.current
+    if (!svg) { svgImgRef.current = null; return }
+    try {
+      const clone = svg.cloneNode(true)
+      clone.setAttribute('width', String(REC_W))
+      clone.setAttribute('height', String(REC_H))
+      const xml = new XMLSerializer().serializeToString(clone)
+      const img = new Image()
+      img.onload = () => { svgImgRef.current = img }
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml)
+    } catch { /* ignore */ }
+  }
+  // Composite loop: mirrored camera + baked SVG overlays + fingertip canvas → a
+  // canvas we captureStream(), so the recorded video shows the full studio UI.
+  const drawComposite = () => {
+    const rc = recCanvasRef.current
+    if (!rc) return
+    const ctx = rc.getContext('2d')
+    ctx.fillStyle = '#07040f'
+    ctx.fillRect(0, 0, REC_W, REC_H)
+    const video = webcamRef.current?.video
+    if (video && video.readyState >= 2) {
+      ctx.save(); ctx.translate(REC_W, 0); ctx.scale(-1, 1)
+      ctx.drawImage(video, 0, 0, REC_W, REC_H)
+      ctx.restore()
+    }
+    if (svgImgRef.current) ctx.drawImage(svgImgRef.current, 0, 0, REC_W, REC_H)
+    if (overlayRef.current) ctx.drawImage(overlayRef.current, 0, 0, REC_W, REC_H)
+    compositeRaf.current = requestAnimationFrame(drawComposite)
+  }
+
+  const finishClip = async (mode, mime) => {
+    const raw = new Blob(recChunks.current, { type: mime || '' })
+    recChunks.current = []
+    let blob = raw
+    let ext = mode === 'video' ? (/mp4/i.test(mime || '') ? 'mp4' : 'webm') : 'webm'
+    if (mode === 'audio') {
+      // MediaRecorder can't emit MP3 directly — transcode for a universal file.
+      try { const { blobToMp3 } = await import('../lib/mp3'); blob = await blobToMp3(raw); ext = 'mp3' }
+      catch (e) { console.warn('MP3 encode failed — keeping original:', e) }
+    }
+    const url = URL.createObjectURL(blob)
+    const c = { url, blob, ext, mode, name: `magic-chords-${mode}.${ext}` }
+    setClip((prev) => { if (prev?.url) setTimeout(() => URL.revokeObjectURL(prev.url), 200); return c })
+    setPreparing(false)
+    saveClip(c) // instantly prompt the download
+  }
+
+  const stopRecording = () => {
+    try { if (recRef.current && recRef.current.state !== 'inactive') recRef.current.stop() } catch { /* noop */ }
+    clearTimeout(recTimer.current)
+    clearInterval(recCountdown.current)
+  }
+
+  const beginRecording = async () => {
+    if (typeof window.MediaRecorder === 'undefined') { alert('Recording isn’t supported in this browser.'); return }
+    try {
+      // Ensure the recording audio tap (instruments) exists FIRST, then add the mic
+      // into that same tap — so both instruments and voice land on one audio track.
+      getAudioStream()
+      try {
+        const mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } })
+        micStreamRef.current = mic
+        attachMic(mic)
+      } catch { /* no mic → record system audio alone */ }
+
+      const audioStream = getAudioStream() // instruments + mic on one track
+      let recStream
+      let mime
+      if (recMode === 'video') {
+        if (!recCanvasRef.current) { const c = document.createElement('canvas'); c.width = REC_W; c.height = REC_H; recCanvasRef.current = c }
+        serializeSvg()
+        stopComposite()
+        drawComposite()
+        const canvasStream = recCanvasRef.current.captureStream(30)
+        const tracks = [...canvasStream.getVideoTracks()]
+        if (audioStream) audioStream.getAudioTracks().forEach((t) => tracks.push(t))
+        recStream = new MediaStream(tracks)
+        // Prefer MP4 (H.264/AAC) where the browser supports recording it; fall back
+        // to WebM (VP9/VP8) otherwise. Recent Chrome + Safari can do MP4.
+        mime = pickMime([
+          'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+          'video/mp4;codecs=h264,aac',
+          'video/mp4',
+          'video/webm;codecs=vp9,opus',
+          'video/webm;codecs=vp8,opus',
+          'video/webm',
+        ])
+      } else {
+        recStream = audioStream ? new MediaStream(audioStream.getAudioTracks()) : null
+        mime = pickMime(['audio/webm;codecs=opus', 'audio/webm'])
+      }
+      if (!recStream || !recStream.getTracks().length) {
+        alert('Nothing to record yet — start the camera and play a sound first.')
+        cleanupMic(); stopComposite(); return
+      }
+      const mr = new MediaRecorder(recStream, mime ? { mimeType: mime, bitsPerSecond: recMode === 'video' ? 3_000_000 : 128_000 } : {})
+      recChunks.current = []
+      mr.ondataavailable = (e) => { if (e.data && e.data.size) recChunks.current.push(e.data) }
+      mr.onstop = () => {
+        setRecording(false)
+        setRecSecs(0)
+        stopComposite()
+        cleanupMic()
+        setPreparing(recMode === 'audio') // MP3 transcode takes a moment
+        finishClip(recMode, mr.mimeType || mime)
+      }
+      recRef.current = mr
+      mr.start()
+      setRecording(true)
+      setRecSecs(0)
+      recCountdown.current = setInterval(() => setRecSecs((s) => s + 1), 1000)
+      recTimer.current = setTimeout(stopRecording, 60_000) // hard 60s cap
+    } catch (e) {
+      console.error('Recording failed:', e)
+      alert('Could not start recording on this device.')
+      setRecording(false); cleanupMic(); stopComposite()
+    }
+  }
+
+  // Starting a new recording while an unsaved clip exists → in-app confirm dialog.
+  const startRecording = () => {
+    if (clip) {
+      setRecDialog({
+        title: 'You have an unsaved recording',
+        body: 'Recording again will replace it. Download it first, or discard and record a new one?',
+        onDownload: () => { saveClip(clip); deleteClip(); setRecDialog(null); beginRecording() },
+        onDiscard: () => { deleteClip(); setRecDialog(null); beginRecording() },
+        onCancel: () => setRecDialog(null),
+      })
+      return
+    }
+    beginRecording()
+  }
+  // Esc exits the full-screen studio (via a ref so the handler stays current).
   useEffect(() => {
     if (!entered) return
-    const onKey = (e) => { if (e.key === 'Escape') exit() }
+    const onKey = (e) => { if (e.key === 'Escape') exitRef.current() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [entered, exit])
-  const onCamError = () => { setStatus('error'); setError('Camera access denied. Allow webcam permission to use AR Studio.'); stop() }
+  }, [entered])
+
+  // While recording video, keep the baked-in SVG overlay fresh as selections change.
+  useEffect(() => {
+    if (recording && recMode === 'video') serializeSvg()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sel, mode, instrument, octStart, virtualPiano, simple, recording, recMode])
+  const onCamError = () => { setStatus('error'); setError('Camera access denied. Allow webcam permission to use Magic Chords.'); stop() }
 
   const chordPcs = sel.chord && sel.root >= 0
     ? chordNotes(roots[sel.root], QUALITIES[mode === 'melody' ? 0 : Math.max(0, sel.quality)].suffix).map((nn) => ((Note.chroma(nn) ?? -1) + 12) % 12)
@@ -532,14 +753,14 @@ export default function ARStudio() {
           <div className="absolute inset-0 bg-gradient-to-br from-accent-500/10 via-transparent to-sky-500/10 pointer-events-none" />
           <div className="relative">
             <div className="text-7xl mb-4">✋✨</div>
-            <h2 className="text-3xl font-black bg-gradient-to-r from-accent-300 to-sky-300 bg-clip-text text-transparent mb-3">AR Studio</h2>
+            <h2 className="text-3xl font-black bg-gradient-to-r from-accent-300 to-sky-300 bg-clip-text text-transparent mb-3">Magic Chords</h2>
             <p className="text-white/60 text-sm max-w-md mx-auto mb-8">
-              Play music in the air with your hands. A gesture instrument with real instruments, a virtual piano,
-              and endless sustaining chords — opens full-screen for a distraction-free studio. Everything runs
-              locally in your browser.
+              Play music in the air with your hands — real instruments, a virtual piano and endless
+              sustaining chords, all from your webcam. Opens full-screen for a distraction-free studio, and
+              everything runs right in your browser.
             </p>
             <div className="flex items-center justify-center gap-3">
-              <button onClick={() => setEntered(true)} className="btn-primary !px-7 !py-3 text-base">Enter AR Studio →</button>
+              <button onClick={() => setEntered(true)} className="btn-primary !px-7 !py-3 text-base">Enter Magic Chords →</button>
               <button
                 onClick={() => setShowHelp(true)}
                 className="w-11 h-11 grid place-items-center rounded-full border border-accent-400/40 text-accent-300 hover:bg-accent-500/15 transition"
@@ -557,23 +778,56 @@ export default function ARStudio() {
 
   // ---- Full-screen studio overlay (scroll-free by construction) ----
   return (
-    <div className="fixed inset-0 z-40 flex flex-col bg-[#07040f] p-3 sm:p-4">
+    <div data-theme="dark" className="fixed inset-0 z-40 flex flex-col bg-[#07040f] p-3 sm:p-4 text-white">
       {showHelp && <HelpDialog onClose={() => setShowHelp(false)} />}
+      {recDialog && <RecordDialog {...recDialog} />}
 
       {/* Compact header */}
       <div className="flex items-center justify-between gap-3 mb-2 shrink-0">
         <h2 className="font-bold text-base sm:text-lg flex items-center gap-2">
-          <span className="text-accent-400">✋</span> AR Studio
-          <span className="chip text-white/50 text-[11px] hidden sm:inline">gesture instrument</span>
+          <span className="text-accent-400">✋</span> Magic Chords
           {active && sel.chord && (
             <span className={`font-mono font-black text-lg ml-1 ${sel.playing ? 'text-mint-400' : 'text-accent-400'}`}>{sel.chord}</span>
           )}
         </h2>
         <div className="flex items-center gap-2">
+          {/* Record: mode toggle + button (60s max, downloads on stop) */}
+          {!recording && (
+            <div className="hidden sm:inline-flex rounded-lg border border-white/10 overflow-hidden text-xs">
+              {['video', 'audio'].map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setRecMode(m)}
+                  className={`px-2.5 py-1.5 capitalize ${recMode === m ? 'bg-accent-500/60 text-white' : 'text-white/55 hover:text-white/80'}`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+          )}
+          <button
+            onClick={recording ? stopRecording : startRecording}
+            disabled={preparing}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
+              recording ? 'bg-rose-500/80 text-white animate-pulse' : 'border border-rose-400/50 text-rose-300 hover:bg-rose-500/15'
+            } ${preparing ? 'opacity-50' : ''}`}
+            title={recording ? 'Stop & download' : `Record ${recMode} (mic + sound, max 60s)`}
+          >
+            {preparing ? '… saving' : recording ? `■ ${60 - recSecs}s` : '● Rec'}
+          </button>
+
+          {/* Persisted clip — download or delete, kept until you leave */}
+          {clip && !recording && (
+            <div className="hidden sm:inline-flex items-center gap-1 rounded-lg border border-mint-400/40 bg-mint-400/10 pl-2 pr-1 py-1 text-xs">
+              <span className="text-mint-300">{clip.mode === 'video' ? '🎬' : '🎵'} clip</span>
+              <button onClick={() => saveClip(clip)} title="Download" className="px-1.5 hover:text-mint-200" aria-label="Download recording">⬇</button>
+              <button onClick={deleteClip} title="Delete" className="px-1.5 text-rose-300 hover:text-rose-200" aria-label="Delete recording">✕</button>
+            </div>
+          )}
           <button
             onClick={() => setShowHelp(true)}
             className="w-8 h-8 grid place-items-center rounded-full border border-accent-400/40 text-accent-300 hover:bg-accent-500/15 hover:border-accent-400/70 transition"
-            title="How does AR Studio work?"
+            title="How does Magic Chords work?"
             aria-label="Help"
           >
             <span className="text-base font-bold">?</span>
@@ -600,7 +854,7 @@ export default function ARStudio() {
                 className="absolute inset-0 w-full h-full object-cover"
                 style={{ transform: 'scaleX(-1)' }}
               />
-              <svg viewBox={`0 0 ${VBW} ${VBH}`} preserveAspectRatio="xMidYMid meet" className="absolute inset-0 w-full h-full pointer-events-none">
+              <svg ref={svgRef} viewBox={`0 0 ${VBW} ${VBH}`} preserveAspectRatio="xMidYMid meet" className="absolute inset-0 w-full h-full pointer-events-none">
                 {mode === 'chord' ? (
                   <>
                     <RadialMenu ring={CHORD_L} active={sel.root} segments={roots} tint={L_TINT} />
@@ -622,7 +876,7 @@ export default function ARStudio() {
               {/* Info box (top-right) */}
               <div className="absolute top-3 right-3 font-mono text-[11px] leading-relaxed bg-black/55 border border-white/10 rounded-xl px-3 py-2 text-white/70 pointer-events-none">
                 <div>Melody: <span className="text-sky-300">{melodyHz}</span> Hz</div>
-                <div>Volume: <span className="text-mint-300">{volume} dB</span></div>
+                <div>Level: <span className="text-mint-300">{level > -60 && isFinite(level) ? `${level.toFixed(0)} dB` : '—'}</span></div>
                 <div>R-Pinch: <span className={sel.rPinch ? 'text-mint-300' : 'text-white/40'}>{sel.rPinch ? 'yes' : '—'}</span></div>
                 <div>Chord: <span className="text-accent-300">{sel.chord || '—'}</span></div>
                 <div>Hands: <span className="text-white/90">{sel.hands}</span></div>
@@ -635,7 +889,7 @@ export default function ARStudio() {
             <div className="absolute inset-0 grid place-items-center text-center px-6 bg-gradient-to-b from-black/40 via-black/20 to-black/50">
               <div className="max-w-md">
                 <div className="text-6xl mb-4">✋✨</div>
-                <h3 className="text-2xl font-black bg-gradient-to-r from-accent-300 to-sky-300 bg-clip-text text-transparent mb-2">AR Studio</h3>
+                <h3 className="text-2xl font-black bg-gradient-to-r from-accent-300 to-sky-300 bg-clip-text text-transparent mb-2">Magic Chords</h3>
                 <p className="text-white/70 text-sm mb-6">
                   Play music in the air with your hands. Point a finger at a glowing ring and hold to lock —
                   the chord <span className="text-mint-300">sustains forever</span> until you move away.
@@ -780,7 +1034,7 @@ function HelpDialog({ onClose }) {
         >
           <div className="flex items-start justify-between gap-4 mb-4">
             <div>
-              <h3 className="text-xl font-black bg-gradient-to-r from-accent-300 to-sky-300 bg-clip-text text-transparent">Playing the AR Studio</h3>
+              <h3 className="text-xl font-black bg-gradient-to-r from-accent-300 to-sky-300 bg-clip-text text-transparent">Playing Magic Chords</h3>
               <p className="text-white/45 text-sm mt-1">Make music in the air with your hands — no instrument needed.</p>
             </div>
             <button onClick={onClose} className="text-white/50 hover:text-white text-2xl leading-none -mt-1" aria-label="Close">×</button>
@@ -797,6 +1051,40 @@ function HelpDialog({ onClose }) {
             ))}
           </div>
           <button onClick={onClose} className="btn-primary w-full mt-5">Got it — let’s play ✨</button>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  )
+}
+
+/* ---- in-app recording confirm (download vs discard) ---- */
+function RecordDialog({ title, body, onDownload, onDiscard, onCancel }) {
+  return (
+    <AnimatePresence>
+      <motion.div
+        className="fixed inset-0 z-[60] grid place-items-center p-4 bg-black/70 backdrop-blur-sm"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onCancel}
+      >
+        <motion.div
+          className="glass max-w-sm w-full p-6 rounded-2xl border border-accent-400/25 text-center"
+          initial={{ scale: 0.92, y: 12 }}
+          animate={{ scale: 1, y: 0 }}
+          exit={{ scale: 0.92, opacity: 0 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="text-4xl mb-3">💾</div>
+          <h3 className="font-bold text-lg mb-1.5">{title}</h3>
+          <p className="text-sm text-white/55 mb-6">{body}</p>
+          <div className="flex flex-col gap-2">
+            <button onClick={onDownload} className="btn-primary w-full">⬇ Download it</button>
+            <div className="flex gap-2">
+              <button onClick={onDiscard} className="btn-ghost flex-1 !text-rose-300 hover:!bg-rose-500/15">Discard</button>
+              <button onClick={onCancel} className="btn-ghost flex-1">Cancel</button>
+            </div>
+          </div>
         </motion.div>
       </motion.div>
     </AnimatePresence>

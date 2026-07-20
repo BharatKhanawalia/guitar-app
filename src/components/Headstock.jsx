@@ -160,7 +160,7 @@ export default function Headstock({ pitch, active, inTune }) {
     Z`
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full max-w-[300px] mx-auto overflow-visible">
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full max-w-[210px] mx-auto overflow-visible">
       <defs>
         <linearGradient id="hs-wood" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#3a2b1a" />

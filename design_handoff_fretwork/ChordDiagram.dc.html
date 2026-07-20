@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:inline-flex;flex-direction:column;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace">
+  <div style="font-size:13px;font-weight:700;letter-spacing:.02em;color:var(--text,#f3f3f6)">{{ label }}</div>
+  <div style="position:relative;padding:4px">
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:0;width:60px;margin-bottom:3px">
+      <sc-for list="{{ strings }}" as="s" hint-placeholder-count="6">
+        <div style="text-align:center;font-size:9px;line-height:1;color:var(--muted,#9a9aa7);height:10px">{{ s.marker }}</div>
+      </sc-for>
+    </div>
+    <div style="position:relative;width:60px;border-top:2.5px solid var(--text,#f3f3f6);border-radius:2px 2px 0 0">
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);grid-template-rows:repeat(4,15px)">
+        <sc-for list="{{ cells }}" as="c" hint-placeholder-count="24">
+          <div style="border-right:1px solid var(--border,#26262f);border-bottom:1px solid var(--border,#26262f);display:flex;align-items:center;justify-content:center">
+            <sc-if value="{{ c.filled }}" hint-placeholder-val="{{ false }}">
+              <div style="width:11px;height:11px;border-radius:50%;background:var(--accent,#8b5cf6);box-shadow:0 0 8px var(--accentSoft,rgba(139,92,246,.4))"></div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+      <sc-if value="{{ baseLabel }}" hint-placeholder-val="">
+        <div style="position:absolute;top:0;left:-16px;font-size:9px;color:var(--muted,#9a9aa7)">{{ baseLabel }}</div>
+      </sc-if>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;90px&quot;,&quot;height&quot;:&quot;120px&quot;},&quot;label&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;C&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;shape&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;x32010&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const label = this.props.label ?? '';
+    let shape = (this.props.shape ?? 'xxxxxx').toString().padEnd(6, 'x').slice(0, 6);
+    const chars = [...shape];
+    const nums = chars.map(c => (c === 'x' || c === '0') ? null : parseInt(c, 10)).filter(n => n != null && !isNaN(n));
+    const min = nums.length ? Math.min(...nums) : 1;
+    const base = min > 4 ? min : 1;
+    const strings = chars.map((c, i) => {
+      const marker = c === 'x' ? '\u00d7' : c === '0' ? '\u25cb' : '';
+      const dot = (c !== 'x' && c !== '0') ? (parseInt(c, 10) - base + 1) : 0;
+      return { marker, dot, key: i };
+    });
+    const cells = [];
+    for (let r = 0; r < 4; r++) {
+      for (let c = 0; c < 6; c++) {
+        cells.push({ key: r + '-' + c, filled: strings[c].dot === r + 1 });
+      }
+    }
+    return { label, strings, cells, baseLabel: base > 1 ? base + 'fr' : '' };
+  }
+}
+</script>
+</body>
+</html>

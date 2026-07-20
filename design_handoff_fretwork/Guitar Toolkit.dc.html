@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: 'Space Grotesk', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent, #8b5cf6); text-decoration: none; }
+  a:hover { color: var(--accent, #8b5cf6); text-decoration: underline; }
+  ::selection { background: var(--accentSoft, rgba(139,92,246,.4)); }
+  :root {
+    --bg:#0b0b0e; --bg2:#111117; --panel:#16161c; --panelHi:#1e1e26; --sunk:#08080b;
+    --text:#f3f3f6; --muted:#9a9aa7; --faint:#5f5f6b; --border:#262630; --borderHi:#34343f;
+    --accent:oklch(0.66 0.2 292); --accent2:oklch(0.72 0.19 292); --accentSoft:oklch(0.66 0.2 292 / .16);
+    --mint:oklch(0.83 0.14 168); --mintSoft:oklch(0.83 0.14 168 / .16);
+    --rose:oklch(0.72 0.19 12); --roseSoft:oklch(0.72 0.19 12 / .16);
+    --amber:oklch(0.82 0.14 78); --amberSoft:oklch(0.82 0.14 78 / .16);
+    --shadow:0 12px 34px rgba(0,0,0,.5); --shadowSm:0 3px 12px rgba(0,0,0,.4);
+    --glow:0 0 0 1px oklch(0.66 0.2 292 / .5), 0 10px 34px oklch(0.66 0.2 292 / .32);
+    color-scheme: dark;
+  }
+  [data-theme="light"] {
+    --bg:#eeece7; --bg2:#f6f4f0; --panel:#ffffff; --panelHi:#faf8f4; --sunk:#e6e3dc;
+    --text:#18181d; --muted:#63636e; --faint:#a2a0a8; --border:#e3e0d9; --borderHi:#d5d2ca;
+    --accent:oklch(0.54 0.2 292); --accent2:oklch(0.58 0.19 292); --accentSoft:oklch(0.54 0.2 292 / .12);
+    --mint:oklch(0.62 0.14 168); --mintSoft:oklch(0.62 0.14 168 / .14);
+    --rose:oklch(0.56 0.19 12); --roseSoft:oklch(0.56 0.19 12 / .12);
+    --amber:oklch(0.62 0.13 78); --amberSoft:oklch(0.62 0.13 78 / .14);
+    --shadow:0 12px 30px rgba(30,28,40,.12); --shadowSm:0 3px 12px rgba(30,28,40,.08);
+    --glow:0 0 0 1px oklch(0.54 0.2 292 / .4), 0 10px 28px oklch(0.54 0.2 292 / .22);
+    color-scheme: light;
+  }
+  @keyframes gt-spin { to { transform: rotate(360deg); } }
+  @keyframes gt-pulse { 0%,100% { opacity:.5; } 50% { opacity:1; } }
+  @keyframes gt-fadeup { from { opacity:0; transform: translateY(14px); } to { opacity:1; transform: none; } }
+  @keyframes gt-eq { 0%,100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
+  @keyframes gt-ring { 0% { transform: scale(.6); opacity:.8; } 100% { transform: scale(1.5); opacity:0; } }
+  @keyframes gt-shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+  @keyframes gt-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+  @keyframes gt-reveal { from { opacity:0; transform: translateY(46px); } to { opacity:1; transform: none; } }
+  @keyframes gt-mesh { 0% { transform: translate(0,0) rotate(0deg) scale(1); } 33% { transform: translate(4%,-3%) rotate(8deg) scale(1.08); } 66% { transform: translate(-3%,4%) rotate(-6deg) scale(1.04); } 100% { transform: translate(0,0) rotate(0deg) scale(1); } }
+  @keyframes gt-pluck { 0% { transform: translate(-90px,-50%); opacity:0; } 12% { opacity:1; } 88% { opacity:1; } 100% { transform: translate(1180px,-50%); opacity:0; } }
+  @keyframes gt-sheen { 0% { background-position: -160% 0; } 60%,100% { background-position: 260% 0; } }
+  @keyframes gt-drift { 0% { transform: translate(0,0); } 100% { transform: translate(-50%,0); } }
+  @keyframes gt-blink { 0%,100% { opacity:.25; } 50% { opacity:1; } }
+  @keyframes gt-notefloat { 0% { opacity:0; transform: translateY(14px) rotate(-8deg) scale(.7); } 22% { opacity:.85; } 62% { opacity:.6; } 100% { opacity:0; transform: translateY(-30px) rotate(6deg) scale(1.05); } }
+  @keyframes gt-menuin { from { opacity:0; } to { opacity:1; } }
+  @keyframes gt-itemin { from { opacity:0; transform: translateY(30px); } to { opacity:1; transform: none; } }
+  @keyframes gt-eqbar { 0%,100% { transform: scaleY(.4); } 50% { transform: scaleY(1); } }
+  .gt-reveal { animation: gt-reveal .8s cubic-bezier(.16,.84,.44,1) both; }
+  .gt-glow-cursor { position:fixed; width:440px; height:440px; border-radius:50%; pointer-events:none; z-index:1; transform: translate(-50%,-50%); background: radial-gradient(circle, oklch(0.66 0.2 292 / .13), transparent 60%); transition: opacity .4s; }
+  [data-theme="light"] .gt-glow-cursor { background: radial-gradient(circle, oklch(0.6 0.18 292 / .09), transparent 60%); }
+  @media (hover: none) { .gt-glow-cursor { display:none; } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .001ms !important; animation-iteration-count: 1 !important; } .gt-glow-cursor { display:none; } }
+  .gt-mi { transition: transform .28s cubic-bezier(.16,.84,.44,1); }
+  .gt-mi:hover { transform: translateX(12px); }
+  .gt-mi-label { transition: color .2s; }
+  .gt-mi:hover .gt-mi-label { background: linear-gradient(100deg, var(--accent2), var(--mint), var(--accent2)); background-size: 220% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: gt-shimmer 1.9s linear infinite; }
+  .gt-mi-ic { color: var(--muted, #9a9aa7); transition: color .25s; flex-shrink:0; }
+  .gt-mi:hover .gt-mi-ic { color: var(--accent); }
+  .gt-mi:hover .anim-home { animation: gt-ic-bounce .6s ease; transform-origin: 12px 20px; }
+  .gt-mi:hover .anim-capo { animation: gt-ic-capo .7s ease; }
+  .gt-mi:hover .anim-sheet { animation: gt-ic-note .9s ease-in-out infinite; }
+  .gt-mi:hover .anim-strum line { animation: gt-ic-vibe .16s ease-in-out infinite; }
+  .gt-mi:hover .anim-strum line:nth-child(2) { animation-delay: .04s; } .gt-mi:hover .anim-strum line:nth-child(3) { animation-delay: .08s; } .gt-mi:hover .anim-strum line:nth-child(4) { animation-delay: .12s; }
+  .gt-mi:hover .anim-tuner { animation: gt-ic-sweep 1.1s ease-in-out infinite; transform-origin: 12px 18px; }
+  .gt-mi:hover .anim-magic .hand { animation: gt-ic-hands 1s ease-in-out infinite; transform-origin: center; }
+  .gt-mi:hover .anim-magic .hand2 { animation-delay: .5s; }
+  .gt-mi:hover .anim-door { animation: gt-ic-door .55s cubic-bezier(.16,.84,.44,1) forwards; transform-origin: 6px 12px; }
+  .gt-bead { animation: gt-bead 4.6s ease-in-out infinite; }
+  .gt-mi:hover .anim-audio rect { animation: gt-eqbar .6s ease-in-out infinite; transform-origin: bottom; }
+  .gt-mi:hover .anim-audio rect:nth-child(2) { animation-delay: .12s; } .gt-mi:hover .anim-audio rect:nth-child(3) { animation-delay: .24s; }
+  @keyframes gt-ic-bounce { 0%,100% { transform: translateY(0); } 42% { transform: translateY(-4px); } }
+  @keyframes gt-ic-capo { 0% { transform: translateX(8px); opacity:.3; } 55% { transform: translateX(0); opacity:1; } 72% { transform: translateX(-1px); } 100% { transform: translateX(0); } }
+  @keyframes gt-ic-hands { 0%{transform:rotate(-20deg)} 50%{transform:rotate(20deg)} 100%{transform:rotate(-20deg)} }
+  @keyframes gt-ic-door { 0%{transform:scaleX(1)} 100%{transform:scaleX(.12)} }
+  @keyframes gt-bead { 0%{transform:translateX(0);opacity:0} 12%{opacity:1} 74%{opacity:1} 100%{transform:translateX(702px);opacity:0} }
+  @keyframes gt-ic-note { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+  @keyframes gt-ic-vibe { 0%,100% { transform: translateX(0); } 50% { transform: translateX(1.3px); } }
+  @keyframes gt-ic-sweep { 0% { transform: rotate(-34deg); } 50% { transform: rotate(34deg); } 100% { transform: rotate(-34deg); } }
+</style>
+</helmet>
+<div data-theme="{{ theme }}" style="position:relative;min-height:100vh;background:var(--bg,#0b0b0e);color:var(--text,#f3f3f6);display:flex;flex-direction:column;overflow-x:hidden;isolation:isolate">
+  <div aria-hidden="true" style="position:fixed;inset:0;z-index:0;pointer-events:none;opacity:{{ meshOpacity }};background:radial-gradient(45vw 45vw at 12% 8%, oklch(0.55 0.2 292 / .28), transparent 60%), radial-gradient(42vw 42vw at 90% 96%, oklch(0.62 0.14 210 / .22), transparent 60%), radial-gradient(34vw 34vw at 62% 44%, oklch(0.7 0.16 20 / .14), transparent 60%)"></div>
+  <div aria-hidden="true" style="position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.4;background-image:radial-gradient(var(--border,#262630) 0.5px, transparent 0.5px);background-size:22px 22px"></div>
+  <div style="position:relative;z-index:2;display:flex;flex-direction:column;flex:1;min-height:100vh">
+
+    <div style="position:fixed;top:0;left:0;right:0;z-index:60;height:64px;display:flex;align-items:center;gap:16px;padding:0 clamp(16px,4vw,32px);background:color-mix(in srgb, var(--bg,#0b0b0e) 90%, transparent);backdrop-filter:blur(14px);border-bottom:1px solid color-mix(in srgb, var(--border,#262630) 60%, transparent)">
+      <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0">
+          <button onClick="{{ toggleMenu }}" aria-label="Menu" aria-expanded="{{ menuOpen }}" style="position:relative;width:42px;height:42px;border-radius:13px;border:1px solid var(--border,#262630);background:var(--panel,#16161c);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:3.5px;transition:all .22s" style-hover="border-color:var(--accent);box-shadow:var(--glow)">
+            <sc-if value="{{ menuClosed }}" hint-placeholder-val="{{ true }}">
+              <span style="width:3px;height:11px;border-radius:3px;background:var(--accent2);transform-origin:bottom;animation:gt-eqbar 1.1s ease-in-out infinite"></span>
+              <span style="width:3px;height:17px;border-radius:3px;background:var(--mint);transform-origin:bottom;animation:gt-eqbar 1.1s ease-in-out .18s infinite"></span>
+              <span style="width:3px;height:8px;border-radius:3px;background:var(--rose);transform-origin:bottom;animation:gt-eqbar 1.1s ease-in-out .36s infinite"></span>
+              <span style="width:3px;height:14px;border-radius:3px;background:var(--accent2);transform-origin:bottom;animation:gt-eqbar 1.1s ease-in-out .54s infinite"></span>
+            </sc-if>
+            <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+              <span style="position:absolute;width:19px;height:2.5px;border-radius:3px;background:var(--text,#f3f3f6);transform:rotate(45deg)"></span>
+              <span style="position:absolute;width:19px;height:2.5px;border-radius:3px;background:var(--text,#f3f3f6);transform:rotate(-45deg)"></span>
+            </sc-if>
+          </button>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:7.5px;letter-spacing:.22em;color:var(--muted,#9a9aa7);font-weight:600">{{ menuLabel }}</span>
+        </div>
+      </sc-if>
+      <button onClick="{{ goHome }}" style="display:flex;align-items:center;gap:10px;background:none;border:none;cursor:pointer;padding:0;flex-shrink:0">
+        <div style="width:32px;height:32px;border-radius:9px;background:linear-gradient(140deg,var(--accent,#8b5cf6),var(--accent2,#a78bfa));display:flex;align-items:center;justify-content:center;box-shadow:var(--glow)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><circle cx="8" cy="18" r="3.2"/><path d="M11 16V4l8-2v11"/><circle cx="18" cy="13" r="3.2"/></svg>
+        </div>
+        <span style="font-weight:700;font-size:15px;letter-spacing:-.01em;color:var(--text,#f3f3f6)">Fretwork</span>
+      </button>
+      <sc-if value="{{ notHome }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:1;min-width:0;display:flex;justify-content:center;overflow-x:auto">
+          <div style="display:flex;gap:3px;padding:4px;border-radius:14px;border:1px solid var(--border,#262630);background:color-mix(in srgb, var(--panel,#16161c) 70%, transparent)">
+            <sc-for list="{{ tabItems }}" as="t" hint-placeholder-count="6">
+              <button onClick="{{ t.onClick }}" style="{{ t.style }}">
+                <span style="{{ t.iconWrap }}" aria-hidden="true">{{ t.icon }}</span>
+                <span>{{ t.label }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}"><div style="flex:1"></div></sc-if>
+      <button onClick="{{ toggleTheme }}" aria-label="Toggle theme" style="display:flex;align-items:center;gap:8px;height:38px;padding:0 14px;border-radius:11px;border:1px solid var(--border,#262630);background:var(--panel,#16161c);color:var(--text,#f3f3f6);cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;transition:border-color .2s;flex-shrink:0" style-hover="border-color:var(--borderHi,#34343f)">
+        <span style="font-size:14px">{{ themeIcon }}</span><span>{{ themeLabel }}</span>
+      </button>
+    </div>
+
+    <div style="{{ menuOverlayStyle }}">
+      <div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(52vw 52vw at 82% 22%, var(--accentSoft), transparent 62%), radial-gradient(42vw 42vw at 10% 92%, oklch(0.62 0.14 210 / .12), transparent 60%)"></div>
+        <div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;opacity:.4;background-image:radial-gradient(var(--border,#262630) 0.5px, transparent 0.5px);background-size:22px 22px"></div>
+        <div style="position:relative;height:100%;max-width:960px;margin:0 auto;padding:clamp(104px,15vh,164px) clamp(24px,6vw,72px) 48px;display:flex;flex-direction:column;justify-content:flex-start;overflow-y:auto">
+          <nav style="display:flex;flex-direction:column">
+            <button class="gt-mi" onClick="{{ mHome }}" style="display:flex;align-items:center;gap:clamp(16px,2.4vw,30px);width:100%;padding:clamp(9px,1.3vw,17px) 8px;background:none;border:none;border-bottom:1px solid color-mix(in srgb, var(--border,#262630) 55%, transparent);cursor:pointer;text-align:left;animation:gt-itemin .5s cubic-bezier(.16,.84,.44,1) both;animation-delay:.06s">
+              <svg class="gt-mi-ic" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V5a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v16"/><path d="M2 21h19"/><rect class="anim-door" x="5" y="5" width="11" height="15" rx="1" fill="currentColor" fillOpacity=".16" stroke="currentColor" stroke-width="1.1"/><circle cx="13" cy="13" r="1" fill="currentColor" stroke="none"/></svg>
+              <span class="gt-mi-label" style="font-family:'Bricolage Grotesque',sans-serif;font-weight:600;font-size:clamp(30px,5.2vw,60px);letter-spacing:-.03em;line-height:1;color:var(--text,#f3f3f6);-webkit-text-fill-color:currentColor">Home</span>
+            </button>
+            <button class="gt-mi" onClick="{{ mCapo }}" style="display:flex;align-items:center;gap:clamp(16px,2.4vw,30px);width:100%;padding:clamp(9px,1.3vw,17px) 8px;background:none;border:none;border-bottom:1px solid color-mix(in srgb, var(--border,#262630) 55%, transparent);cursor:pointer;text-align:left;animation:gt-itemin .5s cubic-bezier(.16,.84,.44,1) both;animation-delay:.12s">
+              <svg class="gt-mi-ic" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><rect x="2" y="8" width="20" height="8" rx="2"/><line x1="7" y1="8" x2="7" y2="16"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="17" y1="8" x2="17" y2="16"/><line x1="3" y1="10.5" x2="21" y2="10.5" opacity=".55"/><line x1="3" y1="12" x2="21" y2="12" opacity=".55"/><line x1="3" y1="13.5" x2="21" y2="13.5" opacity=".55"/><rect class="anim-capo" x="9" y="6" width="2.6" height="12" rx="1.3" fill="currentColor" stroke="none"/></svg>
+              <span class="gt-mi-label" style="font-family:'Bricolage Grotesque',sans-serif;font-weight:600;font-size:clamp(30px,5.2vw,60px);letter-spacing:-.03em;line-height:1;color:var(--text,#f3f3f6);-webkit-text-fill-color:currentColor">Capo Calculator</span>
+            </button>
+            <button class="gt-mi" onClick="{{ mSheet }}" style="display:flex;align-items:center;gap:clamp(16px,2.4vw,30px);width:100%;padding:clamp(9px,1.3vw,17px) 8px;background:none;border:none;border-bottom:1px solid color-mix(in srgb, var(--border,#262630) 55%, transparent);cursor:pointer;text-align:left;animation:gt-itemin .5s cubic-bezier(.16,.84,.44,1) both;animation-delay:.18s">
+              <svg class="gt-mi-ic" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="11" x2="16" y2="11"/><line x1="8" y1="14" x2="13" y2="14"/><circle class="anim-sheet" cx="15.5" cy="16" r="1.8" fill="currentColor" stroke="none"/></svg>
+              <span class="gt-mi-label" style="font-family:'Bricolage Grotesque',sans-serif;font-weight:600;font-size:clamp(30px,5.2vw,60px);letter-spacing:-.03em;line-height:1;color:var(--text,#f3f3f6);-webkit-text-fill-color:currentColor">Sheet Transposer</span>
+            </button>
+            <button class="gt-mi" onClick="{{ mStrum }}" style="display:flex;align-items:center;gap:clamp(16px,2.4vw,30px);width:100%;padding:clamp(9px,1.3vw,17px) 8px;background:none;border:none;border-bottom:1px solid color-mix(in srgb, var(--border,#262630) 55%, transparent);cursor:pointer;text-align:left;animation:gt-itemin .5s cubic-bezier(.16,.84,.44,1) both;animation-delay:.24s">
+              <svg class="gt-mi-ic" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><g class="anim-strum"><line x1="6" y1="4" x2="6" y2="20"/><line x1="10" y1="4" x2="10" y2="20"/><line x1="14" y1="4" x2="14" y2="20"/><line x1="18" y1="4" x2="18" y2="20"/></g></svg>
+              <span class="gt-mi-label" style="font-family:'Bricolage Grotesque',sans-serif;font-weight:600;font-size:clamp(30px,5.2vw,60px);letter-spacing:-.03em;line-height:1;color:var(--text,#f3f3f6);-webkit-text-fill-color:currentColor">Strumming Studio</span>
+            </button>
+            <button class="gt-mi" onClick="{{ mTuner }}" style="display:flex;align-items:center;gap:clamp(16px,2.4vw,30px);width:100%;padding:clamp(9px,1.3vw,17px) 8px;background:none;border:none;border-bottom:1px solid color-mix(in srgb, var(--border,#262630) 55%, transparent);cursor:pointer;text-align:left;animation:gt-itemin .5s cubic-bezier(.16,.84,.44,1) both;animation-delay:.3s">
+              <svg class="gt-mi-ic" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 18a8 8 0 0 1 16 0"/><line class="anim-tuner" x1="12" y1="18" x2="12" y2="8"/><circle cx="12" cy="18" r="1.8" fill="currentColor" stroke="none"/></svg>
+              <span class="gt-mi-label" style="font-family:'Bricolage Grotesque',sans-serif;font-weight:600;font-size:clamp(30px,5.2vw,60px);letter-spacing:-.03em;line-height:1;color:var(--text,#f3f3f6);-webkit-text-fill-color:currentColor">Guitar Tuner</span>
+            </button>
+            <button class="gt-mi" onClick="{{ mMagic }}" style="display:flex;align-items:center;gap:clamp(16px,2.4vw,30px);width:100%;padding:clamp(9px,1.3vw,17px) 8px;background:none;border:none;border-bottom:1px solid color-mix(in srgb, var(--border,#262630) 55%, transparent);cursor:pointer;text-align:left;animation:gt-itemin .5s cubic-bezier(.16,.84,.44,1) both;animation-delay:.36s">
+              <svg class="gt-mi-ic" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><g class="anim-magic"><g class="hand" style="transform-origin:7px 15px"><rect x="4.5" y="12" width="5" height="6" rx="2"/><line x1="7" y1="12" x2="7" y2="6.5"/></g><g class="hand hand2" style="transform-origin:17px 15px"><rect x="14.5" y="12" width="5" height="6" rx="2"/><line x1="17" y1="12" x2="17" y2="6.5"/></g></g></svg>
+              <span class="gt-mi-label" style="font-family:'Bricolage Grotesque',sans-serif;font-weight:600;font-size:clamp(30px,5.2vw,60px);letter-spacing:-.03em;line-height:1;color:var(--text,#f3f3f6);-webkit-text-fill-color:currentColor">Magic Chords</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:4px 9px;border-radius:20px;background:var(--accentSoft);color:var(--accent);letter-spacing:.08em;font-weight:600;align-self:center;margin-left:2px">FLAGSHIP</span>
+            </button>
+            <button class="gt-mi" onClick="{{ mAudio }}" style="display:flex;align-items:center;gap:clamp(16px,2.4vw,30px);width:100%;padding:clamp(9px,1.3vw,17px) 8px;background:none;border:none;cursor:pointer;text-align:left;animation:gt-itemin .5s cubic-bezier(.16,.84,.44,1) both;animation-delay:.42s">
+              <svg class="gt-mi-ic" width="34" height="34" viewBox="0 0 24 24" fill="none"><g class="anim-audio"><rect x="4" y="8" width="3.5" height="12" rx="1.5" fill="currentColor"/><rect x="10.25" y="5" width="3.5" height="15" rx="1.5" fill="currentColor"/><rect x="16.5" y="11" width="3.5" height="9" rx="1.5" fill="currentColor"/></g></svg>
+              <span class="gt-mi-label" style="font-family:'Bricolage Grotesque',sans-serif;font-weight:600;font-size:clamp(30px,5.2vw,60px);letter-spacing:-.03em;line-height:1;color:var(--text,#f3f3f6);-webkit-text-fill-color:currentColor">Audio &rarr; Chords</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:4px 9px;border-radius:20px;background:var(--amberSoft);color:var(--amber);letter-spacing:.08em;font-weight:600;align-self:center;margin-left:2px">SOON</span>
+            </button>
+          </nav>
+          <div style="display:flex;align-items:center;gap:16px;margin-top:clamp(22px,4vw,44px);flex-wrap:wrap;animation:gt-itemin .8s ease both">
+            <span style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted,#9a9aa7)"><span style="width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 8px var(--mint)"></span>100% on-device &middot; zero latency &middot; no accounts</span>
+            <span style="font-size:12.5px;color:var(--muted,#9a9aa7)">hello@fretwork.app</span>
+          </div>
+        </div>
+      </div>
+
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;padding-top:64px">
+      <main style="flex:1;min-width:0" role="main">
+        <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+          <div key="home" style="padding-bottom:74px">
+            <section style="position:relative;min-height:calc(100vh - 64px);display:flex;flex-direction:column;justify-content:center;gap:clamp(18px,3.5vh,44px);padding:clamp(20px,3vh,40px) clamp(24px,5vw,72px) 84px;overflow:hidden">
+              <div style="max-width:880px;margin:0 auto;text-align:center;position:relative;z-index:2">
+                <span style="display:inline-flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:11px;padding:7px 14px;border-radius:30px;background:var(--panel,#16161c);border:1px solid var(--border,#262630);color:var(--muted,#9a9aa7);letter-spacing:.04em;animation:gt-reveal .7s ease both">
+                  <span style="width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 8px var(--mint)"></span>100% in your browser &middot; zero latency &middot; no accounts
+                </span>
+                <h1 style="margin:18px 0 0;font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:clamp(40px,7vw,92px);line-height:.94;letter-spacing:-.045em;animation:gt-reveal .8s cubic-bezier(.16,.84,.44,1) both">
+                  Your whole guitar<br><span style="background:linear-gradient(105deg,var(--accent2),oklch(0.82 0.13 200),var(--mint));-webkit-background-clip:text;background-clip:text;color:transparent">toolkit</span>, in one tab.
+                </h1>
+                <p style="max-width:520px;margin:20px auto 0;font-size:clamp(14px,1.5vw,17px);line-height:1.55;color:var(--muted,#9a9aa7);animation:gt-reveal .9s ease both">Capo maths, transposing, rhythm practice, a tuner, and a webcam instrument that lets you play in the air. Real audio, instant, private.</p>
+                <div style="display:flex;gap:14px;margin-top:26px;flex-wrap:wrap;justify-content:center;animation:gt-reveal 1s ease both">
+                  <button onClick="{{ goCapo }}" style="height:52px;padding:0 26px;border-radius:15px;border:none;background:var(--accent);color:#fff;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:10px;box-shadow:var(--glow);transition:transform .14s" style-active="transform:scale(.97)" style-hover="transform:translateY(-2px)">Open the toolkit <span style="font-size:17px">&rarr;</span></button>
+                  <button onClick="{{ goMagic }}" style="height:52px;padding:0 22px;border-radius:15px;border:1px solid var(--borderHi,#34343f);background:var(--panel,#16161c);color:var(--text,#f3f3f6);font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:9px" style-hover="border-color:var(--accent)">&#10024; Try Magic Chords</button>
+                </div>
+              </div>
+              <div aria-hidden="true" style="position:relative;width:100%;max-width:1120px;margin:0 auto;height:clamp(150px,20vw,220px)">
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;padding:10px 0">
+                  <div style="position:relative;height:2px;background:linear-gradient(90deg,transparent,var(--border,#262630) 10%,var(--border,#262630) 90%,transparent)"><span style="position:absolute;top:50%;left:0;width:78px;height:9px;border-radius:9px;background:radial-gradient(closest-side,var(--accent2),transparent);animation:gt-pluck 5.5s linear .0s infinite"></span></div>
+                  <div style="position:relative;height:2px;background:linear-gradient(90deg,transparent,var(--border,#262630) 10%,var(--border,#262630) 90%,transparent)"><span style="position:absolute;top:50%;left:0;width:78px;height:9px;border-radius:9px;background:radial-gradient(closest-side,var(--mint),transparent);animation:gt-pluck 6.4s linear .9s infinite"></span></div>
+                  <div style="position:relative;height:2px;background:linear-gradient(90deg,transparent,var(--border,#262630) 10%,var(--border,#262630) 90%,transparent)"><span style="position:absolute;top:50%;left:0;width:78px;height:9px;border-radius:9px;background:radial-gradient(closest-side,var(--accent2),transparent);animation:gt-pluck 5.9s linear 1.8s infinite"></span></div>
+                  <div style="position:relative;height:2px;background:linear-gradient(90deg,transparent,var(--border,#262630) 10%,var(--border,#262630) 90%,transparent)"><span style="position:absolute;top:50%;left:0;width:78px;height:9px;border-radius:9px;background:radial-gradient(closest-side,var(--rose),transparent);animation:gt-pluck 7s linear .4s infinite"></span></div>
+                  <div style="position:relative;height:2px;background:linear-gradient(90deg,transparent,var(--border,#262630) 10%,var(--border,#262630) 90%,transparent)"><span style="position:absolute;top:50%;left:0;width:78px;height:9px;border-radius:9px;background:radial-gradient(closest-side,var(--mint),transparent);animation:gt-pluck 6.1s linear 2.4s infinite"></span></div>
+                  <div style="position:relative;height:2px;background:linear-gradient(90deg,transparent,var(--border,#262630) 10%,var(--border,#262630) 90%,transparent)"><span style="position:absolute;top:50%;left:0;width:78px;height:9px;border-radius:9px;background:radial-gradient(closest-side,var(--accent2),transparent);animation:gt-pluck 5.7s linear 1.2s infinite"></span></div>
+                </div>
+                <sc-for list="{{ floatNotes }}" as="fn" hint-placeholder-count="6"><span aria-hidden="true" style="{{ fn.style }}">{{ fn.glyph }}</span></sc-for>
+              </div>
+            </section>
+
+            <div aria-hidden="true" style="position:fixed;left:0;right:0;bottom:0;z-index:40;overflow:hidden;border-top:1px solid var(--border,#262630);padding:13px 0;background:color-mix(in srgb,var(--bg2,#111117) 72%,transparent);backdrop-filter:blur(10px)">
+              <div style="display:flex;gap:40px;width:max-content;animation:gt-drift 28s linear infinite;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--muted,#9a9aa7)">
+                <sc-for list="{{ marquee }}" as="mq" hint-placeholder-count="12"><span style="display:flex;align-items:center;gap:40px">{{ mq }} <span style="color:var(--accent)">&#9679;</span></span></sc-for>
+              </div>
+            </div>
+
+            <section style="max-width:1120px;margin:0 auto;padding:clamp(56px,8vw,96px) clamp(24px,5vw,72px)">
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:36px;flex-wrap:wrap" class="gt-reveal">
+                <div>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);letter-spacing:.16em">SIX MODULES</span>
+                  <h2 style="margin:10px 0 0;font-family:'Bricolage Grotesque',sans-serif;font-size:clamp(30px,4.4vw,52px);font-weight:700;letter-spacing:-.035em;line-height:1">Everything a player needs.</h2>
+                </div>
+                <p style="max-width:320px;font-size:14px;color:var(--muted,#9a9aa7);line-height:1.55;margin:0">Each tool is real-time and offline-first. Pick one to dive in &mdash; or wander.</p>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:16px">
+                <sc-for list="{{ moduleCards }}" as="mc" hint-placeholder-count="6">
+                  <button onClick="{{ mc.onClick }}" class="gt-reveal" style="{{ mc.cardStyle }}" style-hover="transform:translateY(-7px);border-color:var(--borderHi,#34343f);box-shadow:0 24px 60px rgba(0,0,0,.4)">
+                    <div style="position:absolute;top:-70px;right:-50px;width:240px;height:240px;border-radius:50%;opacity:.5;background:radial-gradient(circle,color-mix(in srgb,{{ mc.color }} 26%,transparent),transparent 68%);pointer-events:none"></div>
+                    <div style="position:relative;display:flex;flex-direction:column;height:100%">
+                      <div style="display:flex;align-items:flex-start;justify-content:space-between">
+                        <span style="font-family:'Bricolage Grotesque',sans-serif;font-size:38px;font-weight:700;color:transparent;-webkit-text-stroke:1.4px var(--borderHi,#34343f);letter-spacing:-.03em">{{ mc.num }}</span>
+                        <sc-if value="{{ mc.badge }}" hint-placeholder-val=""><span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:4px 9px;border-radius:20px;background:color-mix(in srgb,{{ mc.color }} 18%,transparent);color:{{ mc.color }};letter-spacing:.08em;font-weight:600">{{ mc.badge }}</span></sc-if>
+                      </div>
+                      <div style="flex:1"></div>
+                      <h3 style="margin:20px 0 0;font-family:'Bricolage Grotesque',sans-serif;font-size:23px;font-weight:600;letter-spacing:-.02em">{{ mc.name }}</h3>
+                      <p style="margin:7px 0 0;font-size:13px;color:var(--muted,#9a9aa7);line-height:1.5;max-width:280px">{{ mc.desc }}</p>
+                      <div style="display:flex;align-items:center;gap:8px;margin-top:18px;font-size:12.5px;font-weight:600;color:{{ mc.color }}">Open <span style="font-size:15px">&rarr;</span></div>
+                    </div>
+                  </button>
+                </sc-for>
+              </div>
+            </section>
+
+            <section style="max-width:1120px;margin:0 auto;padding:0 clamp(24px,5vw,72px) clamp(60px,9vw,110px)">
+              <div class="gt-reveal" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--border,#262630);border:1px solid var(--border,#262630);border-radius:22px;overflow:hidden">
+                <sc-for list="{{ stats }}" as="st" hint-placeholder-count="4">
+                  <div style="background:var(--panel,#16161c);padding:32px 26px">
+                    <div style="font-family:'Bricolage Grotesque',sans-serif;font-size:clamp(36px,4.5vw,52px);font-weight:700;letter-spacing:-.03em;line-height:1;background:linear-gradient(120deg,var(--accent2),var(--mint));-webkit-background-clip:text;background-clip:text;color:transparent">{{ st.value }}</div>
+                    <div style="margin-top:8px;font-size:13px;color:var(--muted,#9a9aa7)">{{ st.label }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </section>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ notHome }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:28px;max-width:1180px;width:100%;margin:0 auto">
+        <sc-if value="{{ isCapo }}" hint-placeholder-val="{{ true }}">
+          <div key="capo" style="animation:gt-fadeup .4s ease both">
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;align-items:start">
+
+              <div style="display:flex;flex-direction:column;gap:18px">
+                <section style="background:var(--panel,#16161c);border:1px solid var(--border,#262630);border-radius:18px;padding:22px;box-shadow:var(--shadowSm)">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px">
+                    <div>
+                      <h2 style="margin:0;font-size:15px;font-weight:600">Build your progression</h2>
+                      <p style="margin:2px 0 0;font-size:12px;color:var(--muted,#9a9aa7)">Pick chords or type them &mdash; e.g. <span style="font-family:'JetBrains Mono',monospace;color:var(--text,#f3f3f6)">Bb Dm Gm7 F</span></p>
+                    </div>
+                    <div style="display:flex;background:var(--sunk,#08080b);border:1px solid var(--border,#262630);border-radius:9px;padding:2px">
+                      <button onClick="{{ setSharps }}" style="{{ sharpBtn }}">&#9839;</button>
+                      <button onClick="{{ setFlats }}" style="{{ flatBtn }}">&#9837;</button>
+                    </div>
+                  </div>
+
+                  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+                    <sc-for list="{{ roots }}" as="r" hint-placeholder-count="12">
+                      <button onClick="{{ r.onClick }}" style="{{ r.style }}">{{ r.label }}</button>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px">
+                    <sc-for list="{{ qualities }}" as="q" hint-placeholder-count="6">
+                      <button onClick="{{ q.onClick }}" style="{{ q.style }}">{{ q.label }}</button>
+                    </sc-for>
+                  </div>
+
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint,#5f5f6b);letter-spacing:.12em">YOUR PROGRESSION</div>
+                    <button onClick="{{ clearAll }}" style="display:flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:500;color:var(--rose);background:var(--roseSoft);border:1px solid transparent;border-radius:8px;padding:5px 10px;cursor:pointer;transition:all .15s" style-hover="border-color:var(--rose)">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
+                      Clear all
+                    </button>
+                  </div>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;min-height:44px;align-items:center">
+                    <sc-if value="{{ progEmpty }}" hint-placeholder-val="{{ false }}">
+                      <div style="font-size:12.5px;color:var(--faint,#5f5f6b);font-style:italic">No chords yet &mdash; tap a root then a quality to begin.</div>
+                    </sc-if>
+                    <sc-for list="{{ prog }}" as="c" hint-placeholder-count="4">
+                      <button onClick="{{ c.onRemove }}" title="Remove" style="{{ c.style }}">
+                        <span>{{ c.name }}</span>
+                        <span style="opacity:.6;font-size:13px;line-height:1">&times;</span>
+                      </button>
+                    </sc-for>
+                  </div>
+                </section>
+
+                <section style="background:var(--panel,#16161c);border:1px solid var(--border,#262630);border-radius:18px;padding:22px;box-shadow:var(--shadowSm)">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                    <h2 style="margin:0;font-size:15px;font-weight:600">Capo comparison</h2>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted,#9a9aa7)">frets 0&ndash;11 &middot; ranked by ease</span>
+                  </div>
+                  <p style="margin:0 0 16px;font-size:12px;color:var(--muted,#9a9aa7)">Tap any row for full fretboard shapes &amp; playback.</p>
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    <sc-for list="{{ capoRows }}" as="row" hint-placeholder-count="6">
+                      <button onClick="{{ row.onClick }}" style="{{ row.style }}">
+                        <div style="display:flex;align-items:center;gap:12px;width:132px;flex-shrink:0">
+                          <div style="{{ row.badgeStyle }}">{{ row.badge }}</div>
+                          <div style="text-align:left">
+                            <div style="font-size:13px;font-weight:600;line-height:1.1">{{ row.title }}</div>
+                            <div style="font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--muted,#9a9aa7);margin-top:2px">{{ row.shapes }}</div>
+                          </div>
+                        </div>
+                        <div style="display:flex;gap:14px;align-items:center;flex-shrink:0">
+                          <div style="text-align:center"><div style="font-size:14px;font-weight:700;color:var(--mint)">{{ row.open }}</div><div style="font-size:8.5px;color:var(--faint,#5f5f6b);font-family:'JetBrains Mono',monospace">OPEN</div></div>
+                          <div style="text-align:center"><div style="font-size:14px;font-weight:700;color:var(--rose)">{{ row.barre }}</div><div style="font-size:8.5px;color:var(--faint,#5f5f6b);font-family:'JetBrains Mono',monospace">BARRE</div></div>
+                        </div>
+                        <div style="flex:1;min-width:60px">
+                          <div style="height:8px;border-radius:6px;background:var(--sunk,#08080b);overflow:hidden">
+                            <div style="{{ row.barStyle }}"></div>
+                          </div>
+                        </div>
+                        <sc-if value="{{ row.recommended }}" hint-placeholder-val="{{ false }}">
+                          <span style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;padding:4px 9px;border-radius:20px;background:var(--accent);color:#fff;letter-spacing:.05em;flex-shrink:0">BEST</span>
+                        </sc-if>
+                      </button>
+                    </sc-for>
+                  </div>
+                </section>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:18px;position:sticky;top:100px">
+                <section style="background:var(--panel,#16161c);border:1px solid var(--border,#262630);border-radius:18px;padding:22px;box-shadow:var(--shadowSm)">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                    <h2 style="margin:0;font-size:15px;font-weight:600">Recommended</h2>
+                    <span style="width:8px;height:8px;border-radius:50%;background:var(--mint);box-shadow:0 0 8px var(--mint)"></span>
+                  </div>
+                  <div style="margin:14px 0;padding:16px;border-radius:14px;background:linear-gradient(140deg,var(--accentSoft),transparent);border:1px solid var(--accent)">
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:.1em">CAPO ON FRET</div>
+                    <div style="font-size:44px;font-weight:700;line-height:1;margin:4px 0;letter-spacing:-.03em">3</div>
+                    <div style="font-size:12px;color:var(--muted,#9a9aa7)">Turns 3 barre chords into open shapes</div>
+                  </div>
+                  <button onClick="{{ openChordDetail }}" style="width:100%;height:42px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-weight:600;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:var(--glow);transition:transform .12s" style-active="transform:scale(.98)">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                    Play progression
+                  </button>
+                </section>
+
+                <section style="background:var(--panel,#16161c);border:1px solid var(--border,#262630);border-radius:18px;padding:22px;box-shadow:var(--shadowSm)">
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint,#5f5f6b);letter-spacing:.12em;margin-bottom:14px">LIVE SHAPE PREVIEW</div>
+                  <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center">
+                    <sc-for list="{{ previewShapes }}" as="p" hint-placeholder-count="4">
+                      <dc-import name="ChordDiagram" label="{{ p.label }}" shape="{{ p.shape }}" hint-size="66px,112px"></dc-import>
+                    </sc-for>
+                  </div>
+                  <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border,#262630);display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted,#9a9aa7)">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"><path d="M11 5 6 9H2v6h4l5 4zM19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                    Tap any chord to hear it strummed
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isSheet }}" hint-placeholder-val="{{ false }}">
+          <div key="sheet" style="animation:gt-fadeup .4s ease both;display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:22px;align-items:start">
+            <section style="background:var(--panel,#16161c);border:1px solid var(--border,#262630);border-radius:18px;overflow:hidden;box-shadow:var(--shadowSm)">
+              <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border,#262630);flex-wrap:wrap">
+                <div style="display:flex;align-items:center;background:var(--sunk,#08080b);border:1px solid var(--border,#262630);border-radius:10px;padding:3px">
+                  <button onClick="{{ decTranspose }}" aria-label="Down a semitone" style="width:32px;height:30px;border:none;background:none;color:var(--text,#f3f3f6);font-size:16px;cursor:pointer;border-radius:7px">&minus;</button>
+                  <div style="min-width:58px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600">{{ transposeLabel }}</div>
+                  <button onClick="{{ incTranspose }}" aria-label="Up a semitone" style="width:32px;height:30px;border:none;background:none;color:var(--text,#f3f3f6);font-size:16px;cursor:pointer;border-radius:7px">+</button>
+                </div>
+                <button onClick="{{ resetTranspose }}" style="height:36px;padding:0 12px;border-radius:9px;border:1px solid var(--border,#262630);background:var(--sunk,#08080b);color:var(--muted,#9a9aa7);font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer">reset</button>
+                <div style="width:1px;height:22px;background:var(--border,#262630)"></div>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:5px 10px;border-radius:20px;background:var(--mintSoft);color:var(--mint);font-weight:600">Key of {{ detectedKey }}</span>
+                <button onClick="{{ easiest }}" style="height:36px;padding:0 13px;border-radius:9px;border:1px solid var(--accent);background:var(--accentSoft);color:var(--accent);font-size:12px;font-weight:600;cursor:pointer">&#10024; Easiest chords</button>
+                <div style="flex:1"></div>
+                <div style="display:flex;align-items:center;gap:2px;background:var(--sunk,#08080b);border:1px solid var(--border,#262630);border-radius:9px;padding:3px">
+                  <button onClick="{{ fontDown }}" style="width:30px;height:28px;border:none;background:none;color:var(--muted,#9a9aa7);font-size:11px;cursor:pointer">A&minus;</button>
+                  <button onClick="{{ fontUp }}" style="width:30px;height:28px;border:none;background:none;color:var(--text,#f3f3f6);font-size:15px;cursor:pointer;font-weight:600">A+</button>
+                </div>
+                <button onClick="{{ toggleEdit }}" style="{{ editBtnStyle }}">{{ editLabel }}</button>
+              </div>
+              <div style="padding:22px 24px;font-family:'JetBrains Mono',monospace;line-height:1.9;overflow-x:auto;min-height:340px;font-size:{{ sheetFont }}px">
+                <sc-if value="{{ editing }}" hint-placeholder-val="{{ false }}">
+                  <textarea style="width:100%;min-height:320px;background:var(--sunk,#08080b);border:1px solid var(--border,#262630);border-radius:10px;padding:14px;color:var(--text,#f3f3f6);font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.8;resize:vertical">[Verse]
+G                    Em
+Wise men say, only fools rush in
+C            G
+But I can't help falling in love with you</textarea>
+                </sc-if>
+                <sc-if value="{{ notEditing }}" hint-placeholder-val="{{ true }}">
+                  <div>
+                    <sc-for list="{{ sheetLines }}" as="ln" hint-placeholder-count="8">
+                      <div style="{{ ln.style }}"><sc-for list="{{ ln.tokens }}" as="tk" hint-placeholder-count="3"><span onClick="{{ tk.onClick }}" style="{{ tk.style }}">{{ tk.text }}</span></sc-for></div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </div>
+            </section>
+
+            <div style="display:flex;flex-direction:column;gap:16px;position:sticky;top:100px">
+              <section style="background:var(--panel,#16161c);border:1px solid var(--border,#262630);border-radius:18px;padding:20px;box-shadow:var(--shadowSm)">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint,#5f5f6b);letter-spacing:.12em">CAPO GUIDE</span>
+                </div>
+                <p style="margin:0;font-size:12.5px;color:var(--muted,#9a9aa7);line-height:1.6">{{ capoHelper }}</p>
+                <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border,#262630);cursor:pointer">
+                  <div>
+                    <div style="font-size:12.5px;font-weight:600">Simplify chords</div>
+                    <div style="font-size:11px;color:var(--muted,#9a9aa7);margin-top:1px">sus/maj7/add9 &rarr; basic maj/min</div>
+                  </div>
+                  <button onClick="{{ toggleSimplify }}" role="switch" style="{{ simplifyToggle }}"><span style="{{ simplifyKnob }}"></span></button>
+                </label>
+              </section>
+
+              <section style="background:var(--panel,#16161c);border:1px solid var(--border,#262630);border-radius:18px;padding:20px;box-shadow:var(--shadowSm)">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+                  <button onClick="{{ toggleScroll }}" style="width:40px;height:40px;flex-shrink:0;border-radius:12px;border:none;background:var(--accent);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--glow)">
+                    <sc-if value="{{ autoscroll }}" hint-placeholder-val="{{ false }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></sc-if>
+                    <sc-if value="{{ notScroll }}" hint-placeholder-val="{{ true }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></sc-if>
+                  </button>
+                  <div><div style="font-size:12.5px;font-weight:600">Autoscroll</div><div style="font-size:11px;color:var(--muted,#9a9aa7)">Hands-free, exponential speed</div></div>
+                </div>
+                <input type="range" min="0" max="100" value="{{ scrollSpeed }}" onInput="{{ setScrollSpeed }}" style="width:100%;accent-color:var(--accent)">
+                <div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--faint,#5f5f6b);margin-top:4px"><span>crawl</span><span>fast</span></div>
+              </section>
+
+              <div style="display:flex;gap:10px">
+                <button onClick="{{ openExportPdf }}" style="flex:1;height:42px;border-radius:11px;border:1px solid var(--border,#262630);background:var(--panel,#16161c);color:var(--text,#f3f3f6);font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px" style-hover="border-color:var(--borderHi)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 2h9l5 5v15H6zM15 2v5h5M9 13h6M9 17h4"/></svg>PDF</button>
+                <button onClick="{{ openExportDoc }}" style="flex:1;height:42px;border-radius:11px;border:1px solid var(--border,#262630);background:var(--panel,#16161c);color:var(--text,#f3f3f6);font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px" style-hover="border-color:var(--borderHi)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 2h9l5 5v15H6zM15 2v5h5M8 12l2 6 2-4 2 4 2-6"/></svg>Word</button>
+              </div>
+
+              <button onClick="{{ toggleTips }}" style="height:44px;border-radius:12px;border:1px dashed var(--accent);background:var(--accentSoft);color:var(--accent);font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">{{ tipsLabel }}</button>
+              <sc-if value="{{ tipsOpen }}" hint-placeholder-val="{{ false }}">
+                <section style="background:var(--panel,#16161c);border:1px solid var(--border,#262630);border-radius:18px;padding:20px;box-shadow:var(--shadowSm)">
+                  <div style="font-size:13px;font-weight:600;margin-bottom:8px">How to paste a song</div>
+                  <p style="margin:0 0 12px;font-size:12px;color:var(--muted,#9a9aa7);line-height:1.6">Copy a chord sheet from anywhere (chords on their own line, above the lyrics). Paste it in Edit mode &mdash; alignment is preserved automatically.</p>
+                  <div style="font-size:13px;font-weight:600;margin-bottom:8px">Capo vs. transpose</div>
+                  <p style="margin:0;font-size:12px;color:var(--muted,#9a9aa7);line-height:1.6">Transposing changes both pitch and shapes. A capo keeps the original pitch while letting you use easier shapes &mdash; the guide on the left updates as you transpose.</p>
+                </section>
+              </sc-if>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isStrum }}" hint-placeholder-val="{{ false }}">
+          <div key="strum" style="animation:gt-fadeup .4s ease both;display:grid;grid-template-columns:240px minmax(0,1fr);gap:22px;align-items:start">
+            <section style="background:var(--panel,#16161c);border:1px solid var(--border,#262630);border-radius:18px;padding:18px;box-shadow:var(--shadowSm)">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint,#5f5f6b);letter-spacing:.12em;margin-bottom:12px">PATTERN LIBRARY</div>
+              <sc-for list="{{ patternGroups }}" as="g" hint-placeholder-count="4">
+                <div style="margin-bottom:14px">
+                  <div style="{{ g.labelStyle }}">{{ g.name }}</div>
+                  <div style="display:flex;flex-direction:column;gap:4px">
+                    <sc-for list="{{ g.items }}" as="p" hint-placeholder-count="4">
+                      <button onClick="{{ p.onClick }}" style="{{ p.style }}">{{ p.name }}</button>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-for>
+            </section>
+
+            <div style="display:flex;flex-direction:column;gap:18px">
+              <section style="background:var(--panel,#16161c);border:1px solid var(--border,#262630);border-radius:18px;padding:22px;box-shadow:var(--shadowSm)">
+                <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap">
+                  <button onClick="{{ togglePlay }}" style="{{ transportStyle }}">
+                    <sc-if value="{{ playing }}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></sc-if>
+                    <sc-if value="{{ stopped }}" hint-placeholder-val="{{ true }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></sc-if>
+                  </button>
+                  <div style="flex:1;min-width:140px">
+                    <div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:26px;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:-.02em">{{ bpm }}</span><span style="font-size:11px;color:var(--muted,#9a9aa7);font-family:'JetBrains Mono',monospace">BPM</span></div>
+                    <input type="range" min="40" max="200" value="{{ bpm }}" onInput="{{ setBpm }}" style="width:100%;accent-color:var(--accent);margin-top:2px">
+                  </div>
+                  <div style="display:flex;background:var(--sunk,#08080b);border:1px solid var(--border,#262630);border-radius:10px;padding:3px">
+                    <button onClick="{{ setChordsMode }}" style="{{ chordsModeBtn }}">Ringing chords</button>
+                    <button onClick="{{ setMutedMode }}" style="{{ mutedModeBtn }}">Muted chucks</button>
+                  </div>
+                  <sc-if value="{{ chordsSelectable }}" hint-placeholder-val="{{ true }}">
+                    <select style="height:38px;padding:0 12px;border-radius:10px;border:1px solid var(--border,#262630);background:var(--sunk,#08080b);color:var(--text,#f3f3f6);font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer">
+                      <option>G</option><option>C</option><option>D</option><option>Em</option><option>Am</option>
+                    </select>
+                  </sc-if>
+                </div>
+
+                <div style="background:var(--sunk,#08080b);border:1px solid var(--border,#262630);border-radius:14px;padding:16px">
+                  <div style="display:grid;grid-template-columns:repeat(16,1fr);gap:6px">
+                    <sc-for list="{{ pads }}" as="pad" hint-placeholder-count="16">
+                      <button onClick="{{ pad.onClick }}" style="{{ pad.style }}">{{ pad.glyph }}</button>
+                    </sc-for>
+                  </div>
+                  <div style="display:grid;grid-template-columns:repeat(16,1fr);gap:6px;margin-top:8px">
+                    <sc-for list="{{ beatMarks }}" as="b" hint-placeholder-count="16">
+                      <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--faint,#5f5f6b)">{{ b }}</div>
+                    </sc-for>
+                  </div>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:20px;margin-top:16px;flex-wrap:wrap">
+                  <div style="display:flex;align-items:center;gap:16px">
+                    <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:4px;background:var(--accent)"></span><span style="font-size:11.5px;color:var(--muted,#9a9aa7)">Down &darr;</span></div>
+                    <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:4px;background:var(--mint)"></span><span style="font-size:11.5px;color:var(--muted,#9a9aa7)">Up &uarr;</span></div>
+                    <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:4px;background:var(--rose)"></span><span style="font-size:11.5px;color:var(--muted,#9a9aa7)">Chuck &times;</span></div>
+                    <div style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;border-radius:4px;background:var(--sunk,#08080b);border:1px solid var(--border,#262630)"></span><span style="font-size:11.5px;color:var(--muted,#9a9aa7)">Rest</span></div>
+                  </div>
+                  <div style="flex:1"></div>
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <span style="font-size:11px;color:var(--muted,#9a9aa7);font-family:'JetBrains Mono',monospace">STEPS</span>
+                    <div style="display:flex;background:var(--sunk,#08080b);border:1px solid var(--border,#262630);border-radius:8px;padding:2px">
+                      <button onClick="{{ setSteps8 }}" style="{{ steps8Btn }}">8</button>
+                      <button onClick="{{ setSteps16 }}" style="{{ steps16Btn }}">16</button>
+                      <button onClick="{{ setSteps32 }}" style="{{ steps32Btn }}">32</button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section style="display:flex;align-items:center;gap:10px;background:linear-gradient(120deg,var(--accentSoft),transparent);border:1px solid var(--border,#262630);border-radius:14px;padding:14px 18px">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"><path d="M12 3v18M6 8v8M18 8v8M3 11v2M21 11v2"/></svg>
+                <span style="font-size:12.5px;color:var(--muted,#9a9aa7)"><strong style="color:var(--text,#f3f3f6)">Humanized feel:</strong> emphasis, timing and dynamics adapt to metric position &mdash; downbeats hit harder, offbeats breathe. Never robotic.</span>
+              </section>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isTuner }}" hint-placeholder-val="{{ false }}">
+          <div key="tuner" style="animation:gt-fadeup .4s ease both;max-width:760px;margin:0 auto">
+            <section style="background:var(--panel,#16161c);border:1px solid var(--border,#262630);border-radius:20px;padding:28px;box-shadow:var(--shadowSm)">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="width:9px;height:9px;border-radius:50%;background:var(--mint);box-shadow:0 0 10px var(--mint);animation:gt-pulse 1.6s infinite"></span>
+                  <span style="font-size:12.5px;color:var(--muted,#9a9aa7);font-family:'JetBrains Mono',monospace">Listening&hellip; pluck a string</span>
+                </div>
+                <button onClick="{{ toggleTuner }}" style="{{ tunerBtnStyle }}">{{ tunerBtnLabel }}</button>
+              </div>
+
+              <div style="display:grid;grid-template-columns:200px minmax(0,1fr);gap:28px;align-items:center">
+                <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:10px">
+                  <div style="position:relative;width:120px;height:170px;background:linear-gradient(160deg,var(--panelHi,#1e1e26),var(--sunk,#08080b));border:1px solid var(--border,#262630);border-radius:18px 18px 26px 26px">
+                    <sc-for list="{{ pegs }}" as="pg" hint-placeholder-count="6">
+                      <div style="{{ pg.style }}"><div style="{{ pg.dotStyle }}"></div><span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:{{ pg.color }}">{{ pg.note }}</span></div>
+                    </sc-for>
+                  </div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint,#5f5f6b)">STANDARD &middot; EADGBE</div>
+                </div>
+
+                <div style="text-align:center">
+                  <div style="font-size:12px;color:var(--mint);font-family:'JetBrains Mono',monospace;font-weight:600;letter-spacing:.1em;margin-bottom:6px">IN TUNE</div>
+                  <div style="display:flex;align-items:baseline;justify-content:center;gap:6px">
+                    <span style="font-size:76px;font-weight:700;line-height:.9;letter-spacing:-.04em">A</span>
+                    <span style="font-size:22px;color:var(--muted,#9a9aa7);font-weight:600">2</span>
+                  </div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted,#9a9aa7);margin:8px 0 20px">110.0 Hz &middot; +2 cents</div>
+
+                  <div style="position:relative;height:56px">
+                    <div style="position:absolute;top:22px;left:0;right:0;height:6px;border-radius:6px;background:linear-gradient(90deg,var(--rose),var(--panelHi,#1e1e26) 42%,var(--mint) 50%,var(--panelHi,#1e1e26) 58%,var(--rose))"></div>
+                    <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);width:2px;height:22px;background:var(--mint)"></div>
+                    <div style="position:absolute;top:8px;left:53%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;transition:left .2s">
+                      <div style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:12px solid var(--mint)"></div>
+                      <div style="width:3px;height:20px;background:var(--mint);border-radius:3px;box-shadow:0 0 12px var(--mint)"></div>
+                    </div>
+                    <div style="position:absolute;bottom:0;left:0;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--faint,#5f5f6b)">&minus;50</div>
+                    <div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--faint,#5f5f6b)">0</div>
+                    <div style="position:absolute;bottom:0;right:0;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--faint,#5f5f6b)">+50</div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px">
+              <div style="display:flex;align-items:center;gap:10px;background:var(--panel,#16161c);border:1px solid var(--border,#262630);border-radius:14px;padding:14px 16px">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--mint)" stroke-width="2" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                <span style="font-size:12px;color:var(--muted,#9a9aa7)">A soft chime plays once when a string settles &mdash; re-arms after it drifts.</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;background:var(--panel,#16161c);border:1px solid var(--border,#262630);border-radius:14px;padding:14px 16px">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <span style="font-size:12px;color:var(--muted,#9a9aa7)">Mic audio is analyzed live and never recorded or uploaded.</span>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isMagic }}" hint-placeholder-val="{{ false }}">
+          <div key="magic" style="animation:gt-fadeup .4s ease both;max-width:900px;margin:0 auto">
+            <div style="position:relative;border-radius:24px;overflow:hidden;background:radial-gradient(120% 140% at 20% 0%, oklch(0.4 0.18 292 / .55), transparent 55%), radial-gradient(100% 120% at 90% 100%, oklch(0.5 0.16 200 / .4), transparent 50%), #0a0a10;border:1px solid var(--border,#262630);padding:52px 44px;color:#f3f3f6;box-shadow:var(--shadow)">
+              <div style="position:absolute;inset:0;opacity:.5;background-image:radial-gradient(circle at 1px 1px, rgba(255,255,255,.14) 1px, transparent 0);background-size:26px 26px;pointer-events:none"></div>
+              <div style="position:relative;max-width:520px">
+                <span style="display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:10px;padding:5px 11px;border-radius:20px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);letter-spacing:.1em;margin-bottom:20px">&#10024; FLAGSHIP &middot; WEBCAM INSTRUMENT</span>
+                <h2 style="margin:0;font-size:40px;font-weight:700;letter-spacing:-.03em;line-height:1.05">Play music in the air</h2>
+                <p style="margin:14px 0 0;font-size:15px;line-height:1.6;color:rgba(255,255,255,.75)">Use your webcam and your hands to conjure chords and melodies &mdash; no strings attached. Two radial menus, 14 instruments, sustained pads that glide between chords. It opens full-screen and immersive.</p>
+                <div style="display:flex;gap:12px;margin-top:28px;flex-wrap:wrap">
+                  <button onClick="{{ enterStudio }}" style="height:50px;padding:0 26px;border-radius:14px;border:none;background:#fff;color:#111;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:9px;box-shadow:0 8px 30px rgba(255,255,255,.25);transition:transform .12s" style-active="transform:scale(.97)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Enter studio
+                  </button>
+                  <button onClick="{{ openMagicHelp }}" style="height:50px;padding:0 22px;border-radius:14px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.08);color:#fff;font-size:14px;font-weight:600;cursor:pointer">How it works</button>
+                </div>
+                <div style="display:flex;gap:22px;margin-top:32px;flex-wrap:wrap">
+                  <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:rgba(255,255,255,.7)"><span style="width:6px;height:6px;border-radius:50%;background:var(--mint)"></span>Lightweight &mdash; won't cook your laptop</div>
+                  <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:rgba(255,255,255,.7)"><span style="width:6px;height:6px;border-radius:50%;background:var(--mint)"></span>Camera stays on your device</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isAudio }}" hint-placeholder-val="{{ false }}">
+          <div key="audio2" style="animation:gt-fadeup .4s ease both;max-width:900px;margin:0 auto">
+            <div style="position:relative;text-align:center;border-radius:24px;overflow:hidden;background:var(--panel,#16161c);border:1px solid var(--border,#262630);padding:56px 32px;box-shadow:var(--shadowSm)">
+              <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--accent),var(--mint),transparent);background-size:200% 100%;animation:gt-shimmer 3s linear infinite"></div>
+              <div style="display:flex;align-items:flex-end;justify-content:center;gap:4px;height:56px;margin-bottom:24px">
+                <sc-for list="{{ eqBars }}" as="b" hint-placeholder-count="9">
+                  <span style="{{ b }}"></span>
+                </sc-for>
+              </div>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:5px 12px;border-radius:20px;background:var(--amberSoft);color:var(--amber);letter-spacing:.1em;font-weight:600">COMING SOON</span>
+              <h2 style="margin:16px 0 0;font-size:30px;font-weight:700;letter-spacing:-.02em">We're polishing the AI</h2>
+              <p style="margin:12px auto 0;max-width:460px;font-size:14px;color:var(--muted,#9a9aa7);line-height:1.6">Drop in any song and get chords, a beat grid, key and BPM &mdash; detected entirely on your device. Choose a fast DSP engine or an AI pipeline that separates vocals and transcribes lyrics. No uploads, ever.</p>
+              <button onClick="{{ toggleAudioPreview }}" style="margin-top:26px;height:44px;padding:0 22px;border-radius:12px;border:1px solid var(--accent);background:var(--accentSoft);color:var(--accent);font-size:13px;font-weight:600;cursor:pointer">{{ audioPreviewLabel }}</button>
+            </div>
+
+            <sc-if value="{{ audioPreviewOpen }}" hint-placeholder-val="{{ false }}">
+              <section style="margin-top:20px;background:var(--panel,#16161c);border:1px solid var(--border,#262630);border-radius:20px;overflow:hidden;box-shadow:var(--shadowSm);animation:gt-fadeup .35s ease both">
+                <div style="display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--border,#262630);flex-wrap:wrap">
+                  <span style="font-size:13px;font-weight:600">Result preview</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;padding:3px 8px;border-radius:20px;background:var(--mintSoft);color:var(--mint)">AI-NEURAL engine</span>
+                  <div style="flex:1"></div>
+                  <div style="display:flex;background:var(--sunk,#08080b);border:1px solid var(--border,#262630);border-radius:10px;padding:3px">
+                    <button onClick="{{ setAudioChords }}" style="{{ audioChordsBtn }}">Chords only</button>
+                    <button onClick="{{ setAudioLyrics }}" style="{{ audioLyricsBtn }}">Lyrics + Chords</button>
+                    <button onClick="{{ setAudioLoading }}" style="{{ audioLoadingBtn }}">Loading</button>
+                    <button onClick="{{ setAudioError }}" style="{{ audioErrorBtn }}">Error</button>
+                  </div>
+                </div>
+
+                <div style="padding:22px 24px;min-height:220px">
+                  <sc-if value="{{ audioIsChords }}" hint-placeholder-val="{{ true }}">
+                    <div>
+                      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted,#9a9aa7)">Key <strong style="color:var(--text,#f3f3f6)">G major</strong></span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted,#9a9aa7)">124 BPM</span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted,#9a9aa7)">4/4</span>
+                      </div>
+                      <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px">
+                        <sc-for list="{{ chordCells }}" as="cell" hint-placeholder-count="16">
+                          <div style="{{ cell.style }}">{{ cell.chord }}</div>
+                        </sc-for>
+                      </div>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ audioIsLyrics }}" hint-placeholder-val="{{ false }}">
+                    <div style="font-family:'JetBrains Mono',monospace;line-height:2;font-size:13px">
+                      <div style="color:var(--accent);font-weight:700">G                 D</div>
+                      <div style="color:var(--text,#f3f3f6)">Here comes the sun, and I say</div>
+                      <div style="color:var(--accent);font-weight:700;margin-top:8px">C                 G</div>
+                      <div style="color:var(--text,#f3f3f6)">It's all right, it's all right now</div>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ audioIsLoading }}" hint-placeholder-val="{{ false }}">
+                    <div style="text-align:center;padding:26px 0">
+                      <div style="width:34px;height:34px;margin:0 auto 16px;border:3px solid var(--border,#262630);border-top-color:var(--accent);border-radius:50%;animation:gt-spin 1s linear infinite"></div>
+                      <div style="font-size:13px;font-weight:600">Separating vocals &amp; transcribing&hellip;</div>
+                      <div style="font-size:11.5px;color:var(--muted,#9a9aa7);margin-top:4px">First run downloads a one-time on-device model (~24 MB). This can take a moment.</div>
+                      <div style="max-width:280px;margin:16px auto 0;height:6px;border-radius:6px;background:var(--sunk,#08080b);overflow:hidden"><div style="width:62%;height:100%;background:linear-gradient(90deg,var(--accent),var(--mint));border-radius:6px"></div></div>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ audioIsError }}" hint-placeholder-val="{{ false }}">
+                    <div style="text-align:center;padding:26px 0">
+                      <div style="width:44px;height:44px;margin:0 auto 14px;border-radius:12px;background:var(--roseSoft);display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--rose)" stroke-width="2.2" stroke-linecap="round"><path d="M12 8v5M12 16h.01M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></div>
+                      <div style="font-size:13.5px;font-weight:600">Couldn't decode this audio file</div>
+                      <div style="font-size:11.5px;color:var(--muted,#9a9aa7);margin-top:4px;max-width:320px;margin-left:auto;margin-right:auto">The format may be unsupported or the file is corrupt. Try a WAV, MP3, or M4A under 20 minutes.</div>
+                      <button style="margin-top:16px;height:38px;padding:0 18px;border-radius:10px;border:1px solid var(--border,#262630);background:var(--sunk,#08080b);color:var(--text,#f3f3f6);font-size:12.5px;font-weight:600;cursor:pointer">Try another file</button>
+                    </div>
+                  </sc-if>
+                </div>
+
+                <div style="padding:16px 24px;border-top:1px solid var(--border,#262630);background:var(--bg2,#111117)">
+                  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+                    <button style="width:40px;height:40px;border-radius:11px;border:none;background:var(--accent);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--glow)"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted,#9a9aa7);min-width:88px">0:42 / 3:18</span>
+                    <div role="slider" aria-label="Seek" aria-valuemin="0" aria-valuemax="198" aria-valuenow="42" tabindex="0" style="position:relative;flex:1;min-width:120px;height:28px;display:flex;align-items:center;cursor:pointer">
+                      <div style="width:100%;height:6px;border-radius:6px;background:var(--sunk,#08080b)"><div style="width:22%;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accent),var(--mint))"></div></div>
+                      <div style="position:absolute;left:22%;top:50%;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid var(--accent);box-shadow:0 2px 6px rgba(0,0,0,.4)"></div>
+                      <div style="position:absolute;left:22%;top:-24px;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 7px;border-radius:6px;background:var(--text,#f3f3f6);color:var(--bg,#0b0b0e);font-weight:600">0:42</div>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center">
+                      <button style="height:34px;padding:0 11px;border-radius:9px;border:1px solid var(--border,#262630);background:var(--panel,#16161c);color:var(--muted,#9a9aa7);font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer">Transpose &minus;2</button>
+                      <button style="height:34px;padding:0 11px;border-radius:9px;border:1px solid var(--border,#262630);background:var(--panel,#16161c);color:var(--muted,#9a9aa7);font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer">Vocals off</button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </sc-if>
+          </div>
+        </sc-if>
+        </div>
+        </sc-if>
+      </main>
+
+      <footer data-gt-footer style="border-top:1px solid var(--border,#262630);background:var(--bg2,#111117);padding:28px;margin-top:20px">
+        <div style="max-width:1180px;margin:0 auto">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint,#5f5f6b);letter-spacing:.14em;margin-bottom:14px">FREQUENTLY ASKED</div>
+          <div style="display:flex;flex-direction:column;gap:2px;margin-bottom:24px">
+            <sc-for list="{{ faqs }}" as="f" hint-placeholder-count="3">
+              <div style="border-bottom:1px solid var(--border,#262630)">
+                <button onClick="{{ f.onClick }}" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 4px;background:none;border:none;color:var(--text,#f3f3f6);cursor:pointer;font-family:inherit;font-size:13.5px;font-weight:500;text-align:left">
+                  <span>{{ f.q }}</span>
+                  <span style="{{ f.iconStyle }}">+</span>
+                </button>
+                <sc-if value="{{ f.open }}" hint-placeholder-val="{{ false }}">
+                  <p style="margin:0;padding:0 4px 16px;font-size:12.5px;color:var(--muted,#9a9aa7);line-height:1.55;max-width:640px">{{ f.a }}</p>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;padding-top:20px;border-top:1px solid var(--border,#262630)">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(140deg,var(--accent,#8b5cf6),var(--accent2,#a78bfa));display:flex;align-items:center;justify-content:center">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><circle cx="8" cy="18" r="3.2"/><path d="M11 16V4l8-2v11"/><circle cx="18" cy="13" r="3.2"/></svg>
+              </div>
+              <span style="font-size:12px;color:var(--muted,#9a9aa7)">Fretwork &mdash; a joyful toolkit for guitarists.</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:18px;font-size:12px;flex-wrap:wrap">
+              <span style="color:var(--muted,#9a9aa7)">Contact <a href="mailto:hello@fretwork.app">hello@fretwork.app</a></span>
+              <a href="#" style="color:var(--muted,#9a9aa7)">Terms</a>
+              <a href="#" style="color:var(--muted,#9a9aa7)">Privacy</a>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <sc-if value="{{ showStudio }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;z-index:100;background:#07070b;color:#f3f3f6;display:flex;flex-direction:column;animation:gt-fadeup .3s ease both;font-family:'Space Grotesk',sans-serif">
+      <div style="position:relative;flex:1;overflow:hidden;background:radial-gradient(120% 120% at 50% 40%, #14141c, #07070b)">
+        <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:44px 44px"></div>
+
+        <div style="position:absolute;top:20px;left:24px;right:280px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:11px;background:rgba(20,20,28,.75);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.1)">
+            <div style="display:flex;background:rgba(0,0,0,.4);border-radius:8px;padding:2px">
+              <button onClick="{{ setChordModeMagic }}" style="{{ magicChordBtn }}">Two-hand chord</button>
+              <button onClick="{{ setMelodyMode }}" style="{{ magicMelodyBtn }}">Melody + chord</button>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:11px;background:rgba(20,20,28,.75);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.1);font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,.85)">
+            <span style="width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 8px var(--mint)"></span>Hands: 2 &middot; Chord: Am &middot; Level: &minus;12 dB &middot; 220 Hz &middot; R-Pinch: on
+          </div>
+        </div>
+        <button onClick="{{ tryRecordAgain }}" style="position:absolute;top:20px;right:150px;display:flex;align-items:center;gap:8px;padding:9px 15px;border-radius:11px;background:var(--rose);border:none;color:#fff;font-weight:600;font-size:12.5px;cursor:pointer;box-shadow:0 6px 20px var(--roseSoft)"><span style="width:9px;height:9px;border-radius:50%;background:#fff;animation:gt-pulse 1s infinite"></span>REC 0:12</button>
+        <button onClick="{{ closeModal }}" style="position:absolute;top:20px;right:24px;display:flex;align-items:center;gap:7px;padding:9px 15px;border-radius:11px;background:rgba(20,20,28,.75);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:12.5px;font-weight:600;cursor:pointer">Exit <span style="font-family:'JetBrains Mono',monospace;font-size:10px;opacity:.6">ESC</span></button>
+
+        <div style="position:absolute;left:8%;top:50%;transform:translateY(-50%);width:160px;height:160px">
+          <div style="position:absolute;inset:0;border-radius:50%;border:2px solid rgba(139,92,246,.4);animation:gt-ring 2.4s ease-out infinite"></div>
+          <div style="position:absolute;inset:20px;border-radius:50%;background:rgba(20,20,28,.6);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;flex-direction:column">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(255,255,255,.5);letter-spacing:.1em">ROOT</div>
+            <div style="font-size:34px;font-weight:700;color:var(--accent2)">A</div>
+          </div>
+          <sc-for list="{{ radialLeft }}" as="seg" hint-placeholder-count="6"><div style="{{ seg.style }}">{{ seg.label }}</div></sc-for>
+        </div>
+
+        <div style="position:absolute;right:8%;top:50%;transform:translateY(-50%);width:160px;height:160px">
+          <div style="position:absolute;inset:20px;border-radius:50%;background:rgba(20,20,28,.6);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;flex-direction:column">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(255,255,255,.5);letter-spacing:.1em">QUALITY</div>
+            <div style="font-size:24px;font-weight:700;color:var(--mint)">min</div>
+          </div>
+          <sc-for list="{{ radialRight }}" as="seg" hint-placeholder-count="6"><div style="{{ seg.style }}">{{ seg.label }}</div></sc-for>
+        </div>
+
+        <div style="position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);text-align:center;pointer-events:none">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,.35);letter-spacing:.2em">NOW PLAYING</div>
+          <div style="font-size:64px;font-weight:700;letter-spacing:-.03em;background:linear-gradient(120deg,var(--accent2),var(--mint));-webkit-background-clip:text;background-clip:text;color:transparent">A minor</div>
+        </div>
+
+        <div style="position:absolute;left:50%;bottom:120px;transform:translateX(-50%);display:flex;gap:5px">
+          <sc-for list="{{ fingertips }}" as="ft" hint-placeholder-count="5"><span style="{{ ft }}"></span></sc-for>
+        </div>
+      </div>
+
+      <div style="position:relative;z-index:2;background:rgba(12,12,18,.94);backdrop-filter:blur(16px);border-top:1px solid rgba(255,255,255,.1);padding:16px 24px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;max-width:1200px;margin:0 auto">
+          <div style="position:relative">
+            <button onClick="{{ toggleInstrDrop }}" style="height:40px;padding:0 14px;border-radius:11px;background:rgba(30,30,40,.9);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:10px;min-width:150px;justify-content:space-between"><span>&#127928; {{ instrument }}</span><span style="font-size:9px;opacity:.6">&#9650;</span></button>
+            <sc-if value="{{ instrDropOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;bottom:calc(100% + 8px);left:0;width:190px;max-height:260px;overflow-y:auto;background:#16161f;border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:6px;box-shadow:0 -12px 40px rgba(0,0,0,.6)">
+                <sc-for list="{{ instruments }}" as="ins" hint-placeholder-count="8"><button onClick="{{ ins.onClick }}" style="{{ ins.style }}">{{ ins.name }}</button></sc-for>
+              </div>
+            </sc-if>
+          </div>
+          <select style="height:40px;padding:0 12px;border-radius:11px;background:rgba(30,30,40,.9);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:12.5px;cursor:pointer;{{ scaleDisabled }}"><option>Major</option><option>Minor</option><option>Pentatonic</option><option>Blues</option><option>Chromatic</option></select>
+          <select style="height:40px;padding:0 12px;border-radius:11px;background:rgba(30,30,40,.9);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:12.5px;cursor:pointer"><option>Oct 3&ndash;4</option><option>Oct 4&ndash;5</option><option>Full range</option></select>
+          <div style="display:flex;background:rgba(0,0,0,.4);border-radius:10px;padding:3px">
+            <button style="{{ waveBtn0 }}">sine</button><button style="{{ waveBtn1 }}">tri</button><button style="{{ waveBtn2 }}">saw</button><button style="{{ waveBtn3 }}">sqr</button>
+          </div>
+          <div style="flex:1"></div>
+          <button onClick="{{ togglePianoUI }}" style="{{ pianoUIBtn }}">&#127929; Piano UI</button>
+          <button onClick="{{ tryRecordAgain }}" style="height:40px;padding:0 16px;border-radius:11px;background:var(--rose);border:none;color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px"><span style="width:8px;height:8px;border-radius:50%;background:#fff"></span>Record</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showBackdrop }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeModal }}" style="position:fixed;inset:0;z-index:110;background:rgba(6,6,10,.7);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px;animation:gt-fadeup .2s ease both">
+
+      <sc-if value="{{ showChordDetail }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ stop }}" style="width:100%;max-width:640px;max-height:88vh;overflow-y:auto;background:var(--panel,#16161c);border:1px solid var(--border,#262630);border-radius:20px;box-shadow:var(--shadow)">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--border,#262630)">
+            <div><h3 style="margin:0;font-size:17px;font-weight:700">Capo on fret 3</h3><p style="margin:2px 0 0;font-size:12.5px;color:var(--muted,#9a9aa7)">E C#m A B &mdash; all open shapes</p></div>
+            <button onClick="{{ closeModal }}" aria-label="Close" style="width:34px;height:34px;border-radius:10px;border:1px solid var(--border,#262630);background:var(--sunk,#08080b);color:var(--text,#f3f3f6);font-size:16px;cursor:pointer">&times;</button>
+          </div>
+          <div style="padding:24px;display:flex;gap:20px;flex-wrap:wrap;justify-content:center">
+            <dc-import name="ChordDiagram" label="E" shape="022100" hint-size="80px,120px"></dc-import>
+            <dc-import name="ChordDiagram" label="C#m" shape="x46654" hint-size="80px,120px"></dc-import>
+            <dc-import name="ChordDiagram" label="A" shape="x02220" hint-size="80px,120px"></dc-import>
+            <dc-import name="ChordDiagram" label="B" shape="x24442" hint-size="80px,120px"></dc-import>
+          </div>
+          <div style="padding:0 24px 24px"><button style="width:100%;height:46px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-weight:600;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:var(--glow)"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Play progression (pitch-shifted)</button></div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showExport }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ stop }}" style="width:100%;max-width:420px;background:var(--panel,#16161c);border:1px solid var(--border,#262630);border-radius:20px;box-shadow:var(--shadow);padding:24px">
+          <h3 style="margin:0;font-size:17px;font-weight:700">Export as {{ exportKind }}</h3>
+          <p style="margin:6px 0 18px;font-size:12.5px;color:var(--muted,#9a9aa7)">Name your chord sheet. It'll be beautifully formatted &mdash; no app branding.</p>
+          <label style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--faint,#5f5f6b);letter-spacing:.1em">SONG TITLE</label>
+          <input type="text" placeholder="Chord Sheet" style="width:100%;height:44px;margin-top:6px;padding:0 14px;border-radius:11px;border:1px solid var(--border,#262630);background:var(--sunk,#08080b);color:var(--text,#f3f3f6);font-size:14px;font-family:inherit">
+          <div style="display:flex;gap:10px;margin-top:20px">
+            <button onClick="{{ closeModal }}" style="flex:1;height:44px;border-radius:11px;border:1px solid var(--border,#262630);background:var(--sunk,#08080b);color:var(--text,#f3f3f6);font-size:13px;font-weight:600;cursor:pointer">Cancel</button>
+            <button onClick="{{ closeModal }}" style="flex:1.4;height:44px;border-radius:11px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer;box-shadow:var(--glow)">Download {{ exportKind }}</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showRecordConfirm }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ stop }}" style="width:100%;max-width:420px;background:var(--panel,#16161c);border:1px solid var(--border,#262630);border-radius:20px;box-shadow:var(--shadow);padding:24px">
+          <div style="width:44px;height:44px;border-radius:12px;background:var(--amberSoft);display:flex;align-items:center;justify-content:center;margin-bottom:14px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2.2" stroke-linecap="round"><path d="M12 9v4M12 17h.01M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></div>
+          <h3 style="margin:0;font-size:17px;font-weight:700">You have an unsaved clip</h3>
+          <p style="margin:6px 0 20px;font-size:12.5px;color:var(--muted,#9a9aa7);line-height:1.5">Recording again will replace it. Only one clip is kept in memory &mdash; it's never saved to storage. Download it first?</p>
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <button onClick="{{ closeModal }}" style="height:44px;border-radius:11px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer;box-shadow:var(--glow)">Download clip</button>
+            <div style="display:flex;gap:9px">
+              <button onClick="{{ closeModal }}" style="flex:1;height:42px;border-radius:11px;border:1px solid var(--rose);background:var(--roseSoft);color:var(--rose);font-size:13px;font-weight:600;cursor:pointer">Discard</button>
+              <button onClick="{{ closeModal }}" style="flex:1;height:42px;border-radius:11px;border:1px solid var(--border,#262630);background:var(--sunk,#08080b);color:var(--text,#f3f3f6);font-size:13px;font-weight:600;cursor:pointer">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showHelp }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ stop }}" style="width:100%;max-width:520px;max-height:88vh;overflow-y:auto;background:var(--panel,#16161c);border:1px solid var(--border,#262630);border-radius:20px;box-shadow:var(--shadow);padding:26px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><h3 style="margin:0;font-size:18px;font-weight:700">How Magic Chords works</h3><button onClick="{{ closeModal }}" style="width:32px;height:32px;border-radius:9px;border:1px solid var(--border,#262630);background:var(--sunk,#08080b);color:var(--text,#f3f3f6);font-size:15px;cursor:pointer">&times;</button></div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;gap:12px"><div style="width:32px;height:32px;flex-shrink:0;border-radius:9px;background:var(--accentSoft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-family:'JetBrains Mono',monospace">1</div><div><div style="font-size:13.5px;font-weight:600">Left hand picks the root</div><div style="font-size:12px;color:var(--muted,#9a9aa7);line-height:1.5">Hover a segment of the left radial and hold for a moment to lock a root note. Left hand alone plays a major chord.</div></div></div>
+            <div style="display:flex;gap:12px"><div style="width:32px;height:32px;flex-shrink:0;border-radius:9px;background:var(--mintSoft);color:var(--mint);display:flex;align-items:center;justify-content:center;font-weight:700;font-family:'JetBrains Mono',monospace">2</div><div><div style="font-size:13.5px;font-weight:600">Right hand shapes it</div><div style="font-size:12px;color:var(--muted,#9a9aa7);line-height:1.5">The right radial overrides the quality (minor, 7, sus...). In Melody mode, the right side becomes a playable note bar.</div></div></div>
+            <div style="display:flex;gap:12px"><div style="width:32px;height:32px;flex-shrink:0;border-radius:9px;background:var(--roseSoft);color:var(--rose);display:flex;align-items:center;justify-content:center;font-weight:700;font-family:'JetBrains Mono',monospace">3</div><div><div style="font-size:13.5px;font-weight:600">Chords sustain &amp; glide</div><div style="font-size:12px;color:var(--muted,#9a9aa7);line-height:1.5">A held chord rings forever with smooth portamento between changes until you drop your hands.</div></div></div>
+          </div>
+          <button onClick="{{ closeModal }}" style="width:100%;height:44px;margin-top:20px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-weight:600;font-size:13.5px;cursor:pointer;box-shadow:var(--glow)">Got it</button>
+        </div>
+      </sc-if>
+
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;1280px&quot;,&quot;height&quot;:&quot;860px&quot;}}">
+class Component extends DCLogic {
+  state = {
+    theme: 'dark', tab: 'home', sharps: true,
+    prog: [{name:'G',diff:'easy'},{name:'Em',diff:'easy'},{name:'C',diff:'medium'},{name:'D',diff:'medium'}],
+    selRoot: 'C',
+    transpose: 0, editing: false, fontScale: 1, simplify: false, autoscroll: false, scrollSpeed: 25, tipsOpen: false,
+    pattern: [1,0,2,0,1,0,2,1,1,0,2,0,1,2,2,0], playing: false, playhead: -1, bpm: 96, steps: 16, strumMode: 'chords',
+    tunerActive: true,
+    instrument: 'Woo', scale: 'Major', magicMode: 'chord', pianoUI: false, simpleNotes: false, instrDropOpen: false, wave: 'saw',
+    modal: null, faqOpen: 0, audioView: 'chords', audioPreviewOpen: false, menuOpen: false,
+  };
+  toggleMenu = () => this.setState(s => ({ menuOpen: !s.menuOpen }));
+  closeMenu = () => this.setState({ menuOpen: false });
+  goHome = () => this.setState({ tab: 'home', menuOpen: false, modal: null });
+  pick = (id) => () => this.setState({ tab: id, menuOpen: false, modal: null });
+
+  componentDidMount() {
+    try { const t = localStorage.getItem('gt-theme'); if (t === 'light' || t === 'dark') this.setState({ theme: t }); } catch(e){}
+    this._onKey = (e) => { if (e.key === 'Escape' && this.state.modal) this.setState({ modal: null }); };
+    window.addEventListener('keydown', this._onKey);
+    if (window.matchMedia && window.matchMedia('(hover: hover)').matches && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const g = document.createElement('div');
+      g.className = 'gt-glow-cursor';
+      g.style.opacity = '0';
+      document.body.appendChild(g);
+      this._glow = g;
+      this._onMove = (e) => { g.style.left = e.clientX + 'px'; g.style.top = e.clientY + 'px'; g.style.opacity = '1'; };
+      window.addEventListener('pointermove', this._onMove, { passive: true });
+    }
+  }
+  componentDidUpdate() {
+    const open = this.state.menuOpen;
+    if (this._lastMenu !== open) { this._lastMenu = open; try { document.body.style.overflow = open ? 'hidden' : ''; } catch (e) {} }
+  }
+  componentWillUnmount() { try { document.body.style.overflow = ''; } catch(e){} if (this._iv) clearInterval(this._iv); if (this._onKey) window.removeEventListener('keydown', this._onKey); if (this._onMove) window.removeEventListener('pointermove', this._onMove); if (this._glow && this._glow.parentNode) this._glow.parentNode.removeChild(this._glow); }
+
+  toggleTheme = () => this.setState(s => {
+    const n = s.theme === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem('gt-theme', n); } catch(e){}
+    return { theme: n };
+  });
+
+  setTab = (t) => this.setState({ tab: t, modal: null });
+  openModal = (m) => this.setState({ modal: m });
+  closeModal = () => this.setState({ modal: null });
+
+  QUALS = ['maj','min','7','m7','maj7','sus4'];
+  ROOTS_S = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  ROOTS_F = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+  SHAPES = { G:'320003', Em:'022000', C:'x32010', D:'xx0232', Am:'x02210', A:'x02220', E:'022100', F:'133211', Dm:'xx0231', Bm:'x24432', Bb:'x13331', Gm7:'353333', Cadd9:'x32033' };
+
+  addChord = (root, qual) => {
+    const suffix = qual === 'maj' ? '' : qual === 'min' ? 'm' : qual;
+    const name = root + suffix;
+    const diff = ['','m','7','m7'].includes(suffix) && ['C','A','G','E','D','Am','Em','Dm'].includes(name) ? 'easy'
+      : suffix.includes('maj7') || suffix.includes('sus') ? 'hard' : 'medium';
+    this.setState(s => ({ prog: [...s.prog, { name, diff }] }));
+  };
+  removeChord = (i) => this.setState(s => ({ prog: s.prog.filter((_, x) => x !== i) }));
+  clearAll = () => this.setState({ prog: [] });
+
+  setTranspose = (d) => this.setState(s => ({ transpose: Math.max(-11, Math.min(11, s.transpose + d)) }));
+  resetTranspose = () => this.setState({ transpose: 0 });
+
+  _transposeChord(ch, semi) {
+    const sharpS = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+    const flatS = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+    const m = ch.match(/^([A-G][#b]?)(.*)$/); if (!m) return ch;
+    let idx = sharpS.indexOf(m[1]); if (idx < 0) idx = flatS.indexOf(m[1]); if (idx < 0) return ch;
+    const ni = (((idx + semi) % 12) + 12) % 12;
+    const arr = this.state.sharps ? sharpS : flatS;
+    let q = m[2];
+    if (this.state.simplify) q = q.replace(/(sus\d?|add\d+|maj\d|dim|aug|\d)/g, '').replace(/^(m)?.*/, (x, mm) => mm || '');
+    return arr[ni] + q;
+  }
+
+  tapPad = (i) => this.setState(s => { const p = [...s.pattern]; p[i] = (p[i] + 1) % 4; return { pattern: p }; });
+  togglePlay = () => this.setState(s => {
+    const playing = !s.playing;
+    if (this._iv) { clearInterval(this._iv); this._iv = null; }
+    if (playing) {
+      const ms = 60000 / this.state.bpm / 4;
+      this._iv = setInterval(() => this.setState(st => ({ playhead: (st.playhead + 1) % st.pattern.length })), ms);
+    }
+    return { playing, playhead: playing ? 0 : -1 };
+  });
+
+  renderVals() {
+    const s = this.state, R = React.createElement;
+    const dark = s.theme === 'dark';
+    const titles = {
+      home: ['', '', ''],
+      capo: ['Capo Calculator', 'Find the capo position that makes your progression easiest to play.', ''],
+      sheet: ['Sheet Transposer', 'Paste a chord/lyric sheet, transpose it, and export it beautifully.', ''],
+      strum: ['Strumming Studio', s.strumMode === 'chords' ? 'Ringing chords \u2014 build and practice expressive strum patterns.' : 'Muted chucks \u2014 lock in percussive rhythm and feel.', ''],
+      tuner: ['Guitar Tuner', 'Chromatic tuner using your microphone. Nothing is recorded.', ''],
+      magic: ['Magic Chords', 'Play music in the air with your webcam and hand tracking.', 'FLAGSHIP'],
+      audio: ['Audio \u2192 Chords', 'Detect chords, key, and BPM from any song \u2014 on your device.', 'SOON'],
+    };
+    const [currentTitle, currentSubtitle, currentTag] = titles[s.tab];
+
+    const navDefs = [
+      ['home', 'Home', 'M3 11l9-8 9 8M5 9v11h5v-6h4v6h5V9', ''],
+      ['capo', 'Capo Calculator', 'M4 6h16M4 12h10M4 18h7', ''],
+      ['sheet', 'Sheet Transposer', 'M6 4h12v16H6zM9 8h6M9 12h6M9 16h4', ''],
+      ['strum', 'Strumming Studio', 'M4 12h3l2-7 3 14 2-7h6', ''],
+      ['tuner', 'Guitar Tuner', 'M12 3v9m0 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM6 8l12 0', ''],
+      ['magic', 'Magic Chords', 'M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z', ''],
+      ['audio', 'Audio \u2192 Chords', 'M3 12h3l3-8 4 16 3-8h5', 'SOON'],
+    ];
+    const navItems = navDefs.map(([id, label, path, badge]) => {
+      const active = s.tab === id;
+      return {
+        id, label, badge,
+        onClick: () => this.setTab(id),
+        icon: R('svg', { width: 17, height: 17, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' }, R('path', { d: path })),
+        iconWrap: `display:flex;align-items:center;justify-content:center;width:17px;height:17px;color:${active ? 'var(--accent)' : 'var(--muted,#9a9aa7)'}`,
+        style: `display:flex;align-items:center;gap:11px;width:100%;padding:10px 11px;border-radius:11px;border:1px solid ${active ? 'var(--border,#262630)' : 'transparent'};background:${active ? 'var(--panel,#16161c)' : 'transparent'};color:${active ? 'var(--text,#f3f3f6)' : 'var(--muted,#9a9aa7)'};cursor:pointer;font-family:inherit;font-size:13px;font-weight:${active ? 600 : 500};transition:all .15s;box-shadow:${active ? 'var(--shadowSm)' : 'none'}`,
+      };
+    });
+
+    const rootsArr = s.sharps ? this.ROOTS_S : this.ROOTS_F;
+    const roots = rootsArr.map(r => ({
+      label: r,
+      onClick: () => this.setState({ selRoot: r }),
+      style: `min-width:38px;height:34px;padding:0 8px;border-radius:9px;border:1px solid ${s.selRoot === r ? 'var(--accent)' : 'var(--border,#262630)'};background:${s.selRoot === r ? 'var(--accentSoft)' : 'var(--sunk,#08080b)'};color:${s.selRoot === r ? 'var(--accent)' : 'var(--text,#f3f3f6)'};font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;cursor:pointer;transition:all .12s`,
+    }));
+    const qLabels = { maj: 'major', min: 'minor', '7': '7', m7: 'm7', maj7: 'maj7', sus4: 'sus4' };
+    const qualities = this.QUALS.map(q => ({
+      label: qLabels[q],
+      onClick: () => this.addChord(s.selRoot, q),
+      style: `height:34px;padding:0 14px;border-radius:9px;border:1px solid var(--border,#262630);background:var(--panel,#16161c);color:var(--text,#f3f3f6);font-family:inherit;font-size:12.5px;font-weight:500;cursor:pointer;transition:all .12s`,
+    }));
+
+    const diffColor = { easy: ['var(--mint)', 'var(--mintSoft)'], medium: ['var(--amber)', 'var(--amberSoft)'], hard: ['var(--rose)', 'var(--roseSoft)'] };
+    const prog = s.prog.map((c, i) => {
+      const [fg, bg] = diffColor[c.diff];
+      return {
+        name: c.name,
+        onRemove: () => this.removeChord(i),
+        style: `display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 12px;border-radius:10px;border:1px solid ${fg};background:${bg};color:${fg};font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;cursor:pointer;transition:transform .12s`,
+      };
+    });
+
+    const capoData = [
+      [0, 'No capo', 'G Em C D', 2, 2, 46, false],
+      [3, 'Capo 3', 'E C#m A B', 3, 1, 92, true],
+      [1, 'Capo 1', 'F#m Ebm Bm C#', 0, 4, 22, false],
+      [5, 'Capo 5', 'D Bm G A', 4, 0, 88, false],
+      [7, 'Capo 7', 'C Am F G', 4, 0, 84, false],
+      [2, 'Capo 2', 'F Dm Bb C', 1, 3, 34, false],
+    ];
+    const capoRows = capoData.map(([fret, title, shapes, open, barre, score, rec]) => ({
+      fret, title, shapes, open, barre, recommended: rec,
+      onClick: () => this.openModal('chordDetail'),
+      style: `display:flex;align-items:center;gap:16px;width:100%;padding:12px 14px;border-radius:13px;border:1px solid ${rec ? 'var(--accent)' : 'var(--border,#262630)'};background:${rec ? 'linear-gradient(120deg,var(--accentSoft),transparent)' : 'var(--sunk,#08080b)'};cursor:pointer;transition:all .15s;text-align:left`,
+      badge: fret === 0 ? '\u2014' : fret,
+      badgeStyle: `width:34px;height:34px;flex-shrink:0;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;background:${rec ? 'var(--accent)' : 'var(--panel,#16161c)'};color:${rec ? '#fff' : 'var(--muted,#9a9aa7)'};border:1px solid ${rec ? 'transparent' : 'var(--border,#262630)'}`,
+      barStyle: `height:100%;width:${score}%;border-radius:6px;background:${score > 75 ? 'linear-gradient(90deg,var(--accent),var(--mint))' : score > 45 ? 'var(--amber)' : 'var(--rose)'};transition:width .5s`,
+    }));
+
+    const previewShapes = [
+      { label: 'E', shape: '022100' }, { label: 'C#m', shape: 'x46654' }, { label: 'A', shape: 'x02220' }, { label: 'B', shape: 'x24442' },
+    ];
+
+    const faqData = [
+      ['Does my audio ever leave my device?', 'Never. Every module \u2014 the tuner mic, the webcam hand-tracking, chord detection \u2014 runs entirely in your browser. Nothing is uploaded, stored on a server, or shared. There are no accounts.'],
+      ['Why does a chord with a capo sound different from the open chord?', 'A capo raises the pitch of the exact shape you play. An A shape at capo 3 sounds like a C, but voiced like an A \u2014 subtly brighter than an open C. We pitch-shift the real recorded voicing so what you hear matches what your fingers do.'],
+      ['Will Magic Chords slow down my laptop?', 'It\u2019s built to stay cool: hand detection is throttled and the camera runs at a modest resolution, so it\u2019s lightweight and won\u2019t cook your machine.'],
+    ];
+    const faqs = faqData.map(([q, a], i) => ({
+      q, a, open: s.faqOpen === i,
+      onClick: () => this.setState(st => ({ faqOpen: st.faqOpen === i ? -1 : i })),
+      iconStyle: `font-size:18px;font-weight:400;color:var(--muted,#9a9aa7);transition:transform .2s;transform:rotate(${s.faqOpen === i ? 45 : 0}deg)`,
+    }));
+
+    const tp = s.transpose;
+    const sheetSrc = [
+      { chords: [['G', 0], ['Em', 21]], lyric: 'Wise men say, only fools rush in' },
+      { chords: [['C', 0], ['G', 13]], lyric: "But I can't help falling in love with you" },
+      { lyric: '' },
+      { chords: [['Am', 0], ['Em', 12]], lyric: 'Shall I stay? Would it be a sin' },
+      { chords: [['F', 0], ['C', 8], ['G', 18]], lyric: "If I can't help falling in love with you" },
+      { tab: true, lyric: 'e|--0--2--3--2--0--------------|' },
+    ];
+    const sheetLines = sheetSrc.map((line) => {
+      if (line.tab) return { style: 'white-space:pre;color:var(--muted,#9a9aa7);opacity:.8', tokens: [{ text: line.lyric, style: 'color:var(--muted,#9a9aa7)', onClick: () => {} }] };
+      if (line.chords) {
+        let str = ''; const toks = [];
+        line.chords.forEach(([ch, col]) => {
+          while (str.length < col) str += ' ';
+          const t = this._transposeChord(ch, tp);
+          toks.push({ text: str.slice(str.lastIndexOf(' ', col) + 1), pad: true, style: 'white-space:pre;color:transparent' });
+          str += t;
+          toks.push({ text: (col === 0 ? '' : ' ') + t, style: `color:var(--accent);font-weight:700;cursor:pointer;padding:1px 2px;border-radius:4px`, onClick: () => this.openModal('chordDetail') });
+        });
+        const spaced = [];
+        let prev = 0;
+        line.chords.forEach(([ch, col]) => {
+          if (col > prev) spaced.push({ text: ' '.repeat(col - prev), style: 'white-space:pre', onClick: () => {} });
+          spaced.push({ text: this._transposeChord(ch, tp), style: 'color:var(--accent);font-weight:700;cursor:pointer;padding:0 2px;border-radius:4px;transition:background .12s', onClick: () => this.openModal('chordDetail') });
+          prev = col + 2;
+        });
+        return { style: 'white-space:pre;color:var(--accent)', tokens: spaced };
+      }
+      if (!line.lyric) return { style: 'height:12px', tokens: [] };
+      return { style: 'color:var(--text,#f3f3f6)', tokens: [{ text: line.lyric, style: 'color:var(--text,#f3f3f6)', onClick: () => {} }] };
+    });
+    const capoHelper = tp === 0
+      ? 'Original key. Transpose down to find easier shapes (then add a capo to keep the pitch), or up to sing higher.'
+      : tp < 0
+        ? `\u2212${-tp} = put a capo on fret ${-tp} to keep the original pitch while playing these easier shapes.`
+        : `+${tp} = everything sounds ${tp} semitone${tp>1?'s':''} higher \u2014 sing higher, no capo needed.`;
+    const transposeLabel = tp === 0 ? '\u00b10' : tp > 0 ? '+' + tp : '' + tp;
+
+    const pGroups = [
+      ['Common', ['var(--accent)', 'var(--accentSoft)'], ['Steady eighths', 'Folk D-DU-UDU', 'Pop ballad', 'Island strum', 'Country boom-chick']],
+      ['Uncommon', ['var(--mint)', 'var(--mintSoft)'], ['Reggae skank', 'Bossa nova', 'Waltz 3/4', 'Travis pick']],
+      ['Easy', ['var(--amber)', 'var(--amberSoft)'], ['All downs', 'Down-up basic', 'Half-time']],
+      ['Difficult', ['var(--rose)', 'var(--roseSoft)'], ['16th funk', 'Flamenco rasg.', 'Ghost-note groove', 'Syncopated pop', 'Double-time punk', 'Rumba clave']],
+    ];
+    const patternGroups = pGroups.map(([name, [fg, bg], items]) => ({
+      name, labelStyle: `font-family:'JetBrains Mono',monospace;font-size:9.5px;color:${fg};letter-spacing:.1em;margin-bottom:6px`,
+      items: items.map((it, i) => {
+        const sel = name === 'Common' && i === 1;
+        return { name: it, onClick: () => {}, style: `width:100%;text-align:left;padding:8px 11px;border-radius:9px;border:1px solid ${sel ? fg : 'transparent'};background:${sel ? bg : 'var(--sunk,#08080b)'};color:${sel ? fg : 'var(--text,#f3f3f6)'};font-size:12px;font-weight:${sel?600:500};cursor:pointer;transition:all .12s` };
+      }),
+    }));
+    const padColors = ['var(--sunk,#08080b)', 'var(--accent)', 'var(--mint)', 'var(--rose)'];
+    const padGlyphs = ['', '\u2193', '\u2191', '\u2715'];
+    const pads = s.pattern.map((v, i) => ({
+      glyph: padGlyphs[v],
+      onClick: () => this.tapPad(i),
+      style: `aspect-ratio:1;border-radius:9px;border:1px solid ${s.playhead === i ? '#fff' : v === 0 ? 'var(--border,#262630)' : 'transparent'};background:${padColors[v]};color:${v === 0 ? 'var(--faint)' : '#fff'};font-size:15px;font-weight:700;cursor:pointer;transition:all .1s;box-shadow:${s.playhead === i ? '0 0 0 2px var(--accent),0 0 14px var(--accent)' : v !== 0 ? '0 2px 8px rgba(0,0,0,.3)' : 'none'};transform:${s.playhead === i ? 'translateY(-2px)' : 'none'}`,
+    }));
+    const beatMarks = s.pattern.map((_, i) => i % 4 === 0 ? (i / 4 + 1) : '');
+
+    const pegDefs = [
+      ['E', 'left', 28], ['A', 'left', 74], ['D', 'left', 120],
+      ['G', 'right', 28], ['B', 'right', 74], ['E', 'right', 120],
+    ];
+    const pegs = pegDefs.map(([note, side, top], i) => {
+      const hot = i === 1;
+      const sideStyle = side === 'left' ? 'left:-30px;flex-direction:row-reverse' : 'right:-30px';
+      return {
+        note, color: hot ? 'var(--mint)' : 'var(--muted,#9a9aa7)',
+        style: `position:absolute;top:${top}px;${sideStyle};display:flex;align-items:center;gap:5px`,
+        dotStyle: `width:16px;height:16px;border-radius:50%;background:${hot ? 'var(--mint)' : 'var(--panelHi,#1e1e26)'};border:1px solid ${hot ? 'var(--mint)' : 'var(--border,#262630)'};box-shadow:${hot ? '0 0 12px var(--mint)' : 'none'};transition:all .2s`,
+      };
+    });
+
+    const eqHeights = [40, 70, 55, 90, 65, 100, 50, 80, 45];
+    const eqBars = eqHeights.map((h, i) => `width:5px;height:${h}%;border-radius:3px;background:linear-gradient(180deg,var(--accent),var(--mint));animation:gt-eq ${0.7 + (i % 4) * 0.18}s ease-in-out ${i * 0.08}s infinite;transform-origin:bottom`);
+    const chordSeq = ['G', 'G', 'D', 'D', 'Em', 'Em', 'C', 'C', 'G', 'D', 'C', 'G', 'Am', 'D', 'G', 'G'];
+    const chordCells = chordSeq.map((c, i) => ({
+      chord: c,
+      style: `padding:12px 4px;text-align:center;border-radius:9px;font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;border:1px solid ${i === 4 ? 'var(--accent)' : 'var(--border,#262630)'};background:${i === 4 ? 'var(--accentSoft)' : 'var(--sunk,#08080b)'};color:${i === 4 ? 'var(--accent)' : 'var(--text,#f3f3f6)'};box-shadow:${i === 4 ? '0 0 0 2px var(--accentSoft)' : 'none'}`,
+    }));
+    const av = s.audioView;
+
+    const m = s.modal;
+    const rootNotes = ['A', 'B', 'C', 'D', 'E', 'F'];
+    const qualNotes = ['maj', 'min', '7', 'm7', 'sus', 'maj7'];
+    const radialAt = (arr, hot, hotColor) => arr.map((label, i) => {
+      const ang = (i / arr.length) * Math.PI * 2 - Math.PI / 2;
+      const x = 80 + Math.cos(ang) * 74, y = 80 + Math.sin(ang) * 74;
+      const on = i === hot;
+      return { label, style: `position:absolute;left:${x}px;top:${y}px;transform:translate(-50%,-50%);width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;background:${on ? hotColor : 'rgba(20,20,28,.7)'};color:${on ? '#fff' : 'rgba(255,255,255,.6)'};border:1px solid ${on ? hotColor : 'rgba(255,255,255,.12)'};box-shadow:${on ? '0 0 14px ' + hotColor : 'none'}` };
+    });
+    const instrList = ['Woo', 'Grand Piano', 'Electric Piano', 'Acoustic Guitar', 'Electric Guitar', 'Harmonium', 'Organ', 'Violin', 'Cello', 'Harp', 'Flute', 'Saxophone', 'Aurora Pad', 'Synth Lead'];
+    const instruments = instrList.map(name => ({
+      name, onClick: () => this.setState({ instrument: name, instrDropOpen: false }),
+      style: `display:block;width:100%;text-align:left;padding:9px 12px;border-radius:8px;border:none;background:${s.instrument === name ? 'var(--accent)' : 'transparent'};color:${s.instrument === name ? '#fff' : 'rgba(255,255,255,.85)'};font-size:12.5px;font-weight:${s.instrument === name ? 600 : 500};cursor:pointer;font-family:inherit`,
+    }));
+    const waves = ['sine', 'tri', 'saw', 'sqr'];
+    const waveBtn = (w) => `height:30px;padding:0 10px;border-radius:8px;border:none;background:${s.wave === w ? 'var(--accent)' : 'transparent'};color:${s.wave === w ? '#fff' : 'rgba(255,255,255,.6)'};font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer`;
+    const ftColors = ['var(--accent2)', 'var(--mint)', 'var(--accent2)', 'var(--rose)', 'var(--mint)'];
+    const fingertips = ftColors.map((c, i) => `width:12px;height:12px;border-radius:50%;background:${c};box-shadow:0 0 12px ${c};animation:gt-float ${1.4 + i * 0.2}s ease-in-out infinite`);
+
+    const modDefs = [
+      ['capo', '01', 'Capo Calculator', 'The exact fret that turns barre chords into open shapes.', 'span 7', 'var(--accent)'],
+      ['magic', '05', 'Magic Chords', 'Play in the air with your webcam. The flagship.', 'span 5', 'var(--mint)'],
+      ['sheet', '02', 'Sheet Transposer', 'Paste, transpose, export a chord sheet.', 'span 4', 'var(--accent)'],
+      ['strum', '03', 'Strumming Studio', 'Sequence expressive, humanized rhythms.', 'span 4', 'var(--rose)'],
+      ['tuner', '04', 'Guitar Tuner', 'Chromatic, precise, private.', 'span 4', 'var(--mint)'],
+      ['audio', '06', 'Audio \u2192 Chords', 'Detect chords, key and BPM on-device.', 'span 12', 'var(--amber)'],
+    ];
+    const moduleCards = modDefs.map(([id, num, name, desc, span, color], i) => ({
+      id, num, name, desc, color,
+      onClick: () => this.setTab(id),
+      cardStyle: `grid-column:${span};position:relative;overflow:hidden;text-align:left;min-height:${i < 2 ? 260 : 200}px;padding:26px;border-radius:22px;border:1px solid var(--border,#262630);background:linear-gradient(160deg,var(--panel,#16161c),color-mix(in srgb,var(--panel,#16161c) 70%,transparent));cursor:pointer;transition:transform .5s cubic-bezier(.16,.84,.44,1),border-color .3s,box-shadow .4s;box-shadow:var(--shadowSm)`,
+      revealStyle: `animation:gt-reveal .8s cubic-bezier(.16,.84,.44,1) both;animation-delay:${i * 0.07}s`,
+      badge: id === 'magic' ? 'FLAGSHIP' : id === 'audio' ? 'SOON' : '',
+    }));
+
+    const menuNotes = ['\u266a', '\u266b', '\u2669', '\u266c', '\u266a', '\u266b', '\u2669'];
+    const menuColors = ['var(--accent2)', 'var(--mint)', 'var(--accent2)', 'var(--rose)', 'var(--mint)', 'var(--accent2)', 'var(--amber)'];
+    const menuItems = navDefs.map(([id, label, path, badge], i) => {
+      const active = s.tab === id;
+      return {
+        num: String(i).padStart(2, '0'), label, note: menuNotes[i], color: menuColors[i], badge,
+        onClick: () => this.setState({ tab: id, menuOpen: false, modal: null }),
+        rowStyle: `display:flex;align-items:center;gap:clamp(12px,2.2vw,28px);width:100%;padding:clamp(3px,1vw,9px) 4px;background:none;border:none;border-bottom:1px solid color-mix(in srgb, var(--border,#262630) 45%, transparent);cursor:pointer;text-align:left;animation:gt-itemin .55s cubic-bezier(.16,.84,.44,1) both;animation-delay:${0.05 + i * 0.05}s`,
+        labelStyle: `font-family:'Instrument Serif',serif;font-style:italic;font-size:clamp(38px,7vw,82px);line-height:1.04;transform-origin:left center;transition:transform .25s;color:${active ? 'var(--accent)' : 'var(--text,#f3f3f6)'};-webkit-text-fill-color:${active ? 'var(--accent)' : 'currentColor'}`,
+      };
+    });
+
+    const noteDefs = [
+      [15, 24, 26, 'var(--accent2)', 0, 7.5, '\u266a'], [33, 62, 20, 'var(--mint)', 1.6, 8.2, '\u266b'],
+      [50, 14, 31, 'var(--accent2)', 2.8, 7, '\u2669'], [64, 72, 22, 'var(--rose)', 0.7, 8.6, '\u266c'],
+      [78, 30, 35, 'var(--mint)', 3.6, 7.2, '\u266a'], [89, 58, 25, 'var(--accent2)', 2.0, 9, '\u266b'],
+      [42, 40, 18, 'var(--rose)', 4.4, 8, '\u2669'],
+    ];
+    const floatNotes = noteDefs.map(([l, t, sz, c, dl, du, g]) => ({
+      glyph: g,
+      style: `position:absolute;left:${l}%;top:${t}%;font-family:'Instrument Serif',serif;font-style:italic;font-size:${sz}px;color:${c};text-shadow:0 0 16px ${c}, 0 0 6px ${c};opacity:0;pointer-events:none;animation:gt-notefloat ${du}s ease-in-out ${dl}s infinite`,
+    }));
+
+    const tabShort = { capo: 'Capo', sheet: 'Sheet', strum: 'Strumming', tuner: 'Tuner', magic: 'Magic Chords', audio: 'Audio \u2192 Chords' };
+    const tabItems = navDefs.filter(d => d[0] !== 'home').map(([id, label, path]) => {
+      const active = s.tab === id;
+      return {
+        label: tabShort[id],
+        onClick: this.pick(id),
+        icon: R('svg', { width: 15, height: 15, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' }, R('path', { d: path })),
+        iconWrap: 'display:flex;align-items:center;justify-content:center;width:15px;height:15px',
+        style: `display:flex;align-items:center;gap:7px;height:38px;padding:0 14px;border-radius:11px;border:none;background:${active ? 'var(--accent)' : 'transparent'};color:${active ? '#fff' : 'var(--muted,#9a9aa7)'};font-family:inherit;font-size:13px;font-weight:${active ? 600 : 500};cursor:pointer;white-space:nowrap;transition:all .15s`,
+      };
+    });
+    const menuOverlayStyle = `position:fixed;inset:0;z-index:55;background:var(--bg,#0b0b0e);transition:opacity .32s ease, visibility .32s ease;opacity:${s.menuOpen ? 1 : 0};visibility:${s.menuOpen ? 'visible' : 'hidden'};pointer-events:${s.menuOpen ? 'auto' : 'none'}`;
+
+    return {
+      moduleCards, menuItems, floatNotes,
+      tabItems, menuOverlayStyle, menuLabel: 'MENU',
+      menuOpen: s.menuOpen, menuClosed: !s.menuOpen,
+      toggleMenu: this.toggleMenu, closeMenu: this.closeMenu, goHome: this.goHome,
+      mHome: this.pick('home'), mCapo: this.pick('capo'), mSheet: this.pick('sheet'), mStrum: this.pick('strum'), mTuner: this.pick('tuner'), mMagic: this.pick('magic'), mAudio: this.pick('audio'),
+      goCapo: () => this.setTab('capo'), goMagic: () => this.setTab('magic'),
+      marquee: ['CAPO CALCULATOR', 'SHEET TRANSPOSER', 'STRUMMING STUDIO', 'GUITAR TUNER', 'MAGIC CHORDS', 'AUDIO \u2192 CHORDS', 'ZERO LATENCY', 'FULLY PRIVATE', 'REAL AUDIO', 'NO ACCOUNTS', 'CAPO CALCULATOR', 'SHEET TRANSPOSER', 'STRUMMING STUDIO', 'GUITAR TUNER', 'MAGIC CHORDS', 'AUDIO \u2192 CHORDS', 'ZERO LATENCY', 'FULLY PRIVATE', 'REAL AUDIO', 'NO ACCOUNTS'],
+      stats: [
+        { value: '14', label: 'Air instruments in Magic Chords' },
+        { value: '0-11', label: 'Capo positions ranked instantly' },
+        { value: '0', label: 'Bytes ever uploaded to a server' },
+        { value: '<5ms', label: 'From tap to sound' },
+      ],
+      meshOpacity: dark ? 1 : 0.55,
+      showStudio: m === 'studio',
+      showBackdrop: ['chordDetail', 'exportPdf', 'exportDoc', 'recordConfirm', 'help'].includes(m),
+      showChordDetail: m === 'chordDetail', showExport: m === 'exportPdf' || m === 'exportDoc',
+      exportKind: m === 'exportDoc' ? 'Word' : 'PDF',
+      showRecordConfirm: m === 'recordConfirm', showHelp: m === 'help',
+      closeModal: this.closeModal, stop: (e) => e.stopPropagation(),
+      setChordModeMagic: () => this.setState({ magicMode: 'chord' }), setMelodyMode: () => this.setState({ magicMode: 'melody' }),
+      magicChordBtn: this._magicTab(s.magicMode === 'chord'), magicMelodyBtn: this._magicTab(s.magicMode === 'melody'),
+      radialLeft: radialAt(rootNotes, 0, 'var(--accent)'), radialRight: radialAt(qualNotes, 1, 'var(--mint)'),
+      fingertips, instruments, instrument: s.instrument,
+      toggleInstrDrop: () => this.setState(st => ({ instrDropOpen: !st.instrDropOpen })), instrDropOpen: s.instrDropOpen,
+      scaleDisabled: s.pianoUI ? 'opacity:.4;pointer-events:none' : '',
+      waveBtn0: waveBtn('sine'), waveBtn1: waveBtn('tri'), waveBtn2: waveBtn('saw'), waveBtn3: waveBtn('sqr'),
+      togglePianoUI: () => this.setState(st => ({ pianoUI: !st.pianoUI })),
+      pianoUIBtn: `height:40px;padding:0 14px;border-radius:11px;border:1px solid ${s.pianoUI ? 'var(--accent)' : 'rgba(255,255,255,.15)'};background:${s.pianoUI ? 'var(--accent)' : 'rgba(30,30,40,.9)'};color:#fff;font-size:12.5px;font-weight:600;cursor:pointer`,
+      tryRecordAgain: () => this.openModal('recordConfirm'),
+
+      enterStudio: () => this.openModal('studio'), openMagicHelp: () => this.openModal('help'),
+      eqBars, chordCells,
+      toggleAudioPreview: () => this.setState(st => ({ audioPreviewOpen: !st.audioPreviewOpen })),
+      audioPreviewLabel: s.audioPreviewOpen ? 'Hide the full experience' : 'Preview the full experience \u2192',
+      audioPreviewOpen: s.audioPreviewOpen,
+      setAudioChords: () => this.setState({ audioView: 'chords' }), setAudioLyrics: () => this.setState({ audioView: 'lyrics' }),
+      setAudioLoading: () => this.setState({ audioView: 'loading' }), setAudioError: () => this.setState({ audioView: 'error' }),
+      audioChordsBtn: this._segTab(av === 'chords'), audioLyricsBtn: this._segTab(av === 'lyrics'),
+      audioLoadingBtn: this._segTab(av === 'loading'), audioErrorBtn: this._segTab(av === 'error'),
+      audioIsChords: av === 'chords', audioIsLyrics: av === 'lyrics', audioIsLoading: av === 'loading', audioIsError: av === 'error',
+      pegs, toggleTuner: () => this.setState(st => ({ tunerActive: !st.tunerActive })),
+      tunerBtnLabel: s.tunerActive ? '\u25a0 Stop' : '\u25cf Start mic',
+      tunerBtnStyle: `height:38px;padding:0 16px;border-radius:11px;border:none;background:${s.tunerActive ? 'var(--rose)' : 'var(--accent)'};color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;box-shadow:${s.tunerActive ? 'none' : 'var(--glow)'}`,
+      patternGroups, pads, beatMarks,
+      togglePlay: this.togglePlay, playing: s.playing, stopped: !s.playing,
+      transportStyle: `width:52px;height:52px;flex-shrink:0;border-radius:15px;border:none;background:${s.playing ? 'var(--rose)' : 'var(--accent)'};color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:${s.playing ? '0 8px 24px var(--roseSoft)' : 'var(--glow)'};transition:all .18s`,
+      bpm: s.bpm, setBpm: (e) => { const v = +e.target.value; this.setState({ bpm: v }); if (this._iv) { clearInterval(this._iv); this._iv = setInterval(() => this.setState(st => ({ playhead: (st.playhead + 1) % st.pattern.length })), 60000 / v / 4); } },
+      setChordsMode: () => this.setState({ strumMode: 'chords' }), setMutedMode: () => this.setState({ strumMode: 'muted' }),
+      chordsModeBtn: this._segTab(s.strumMode === 'chords'), mutedModeBtn: this._segTab(s.strumMode === 'muted'),
+      chordsSelectable: s.strumMode === 'chords',
+      setSteps8: () => this._setSteps(8), setSteps16: () => this._setSteps(16), setSteps32: () => this._setSteps(32),
+      steps8Btn: this._segMini(s.steps === 8), steps16Btn: this._segMini(s.steps === 16), steps32Btn: this._segMini(s.steps === 32),
+
+      transposeLabel, detectedKey: this._transposeChord('C', tp),
+      transposeLabel, detectedKey: this._transposeChord('C', tp),
+      incTranspose: () => this.setTranspose(1), decTranspose: () => this.setTranspose(-1), resetTranspose: this.resetTranspose,
+      easiest: () => this.setState({ transpose: -3 }),
+      fontUp: () => this.setState(st => ({ fontScale: Math.min(1.6, st.fontScale + 0.1) })),
+      fontDown: () => this.setState(st => ({ fontScale: Math.max(0.8, st.fontScale - 0.1) })),
+      sheetFont: Math.round(13 * s.fontScale),
+      editing: s.editing, notEditing: !s.editing,
+      toggleEdit: () => this.setState(st => ({ editing: !st.editing })),
+      editLabel: s.editing ? 'Done' : 'Edit',
+      editBtnStyle: `height:36px;padding:0 15px;border-radius:9px;border:1px solid ${s.editing ? 'var(--accent)' : 'var(--border,#262630)'};background:${s.editing ? 'var(--accent)' : 'var(--sunk,#08080b)'};color:${s.editing ? '#fff' : 'var(--text,#f3f3f6)'};font-size:12px;font-weight:600;cursor:pointer`,
+      sheetLines, capoHelper,
+      toggleSimplify: () => this.setState(st => ({ simplify: !st.simplify })),
+      simplifyToggle: this._toggleTrack(s.simplify), simplifyKnob: this._toggleKnob(s.simplify),
+      autoscroll: s.autoscroll, notScroll: !s.autoscroll,
+      toggleScroll: () => this.setState(st => ({ autoscroll: !st.autoscroll })),
+      scrollSpeed: s.scrollSpeed, setScrollSpeed: (e) => this.setState({ scrollSpeed: +e.target.value }),
+      openExportPdf: () => this.openModal('exportPdf'), openExportDoc: () => this.openModal('exportDoc'),
+      tipsOpen: s.tipsOpen, toggleTips: () => this.setState(st => ({ tipsOpen: !st.tipsOpen })),
+      tipsLabel: s.tipsOpen ? '\u2715 Hide tips & help' : '\u2753 Show tips & help',
+      theme: s.theme, toggleTheme: this.toggleTheme,
+      themeIcon: dark ? '\u2600\ufe0f' : '\u{1f319}', themeLabel: dark ? 'Light' : 'Dark',
+      navItems, currentTitle, currentSubtitle, currentTag,
+      isHome: s.tab === 'home', notHome: s.tab !== 'home',
+      isCapo: s.tab === 'capo', isSheet: s.tab === 'sheet', isStrum: s.tab === 'strum',
+      isTuner: s.tab === 'tuner', isMagic: s.tab === 'magic', isAudio: s.tab === 'audio',
+      sharpBtn: this._segBtn(s.sharps), flatBtn: this._segBtn(!s.sharps),
+      setSharps: () => this.setState({ sharps: true }), setFlats: () => this.setState({ sharps: false }),
+      roots, qualities, prog, progEmpty: s.prog.length === 0, clearAll: this.clearAll,
+      capoRows, previewShapes, openChordDetail: () => this.openModal('chordDetail'),
+      faqs,
+    };
+  }
+
+  _setSteps(n) {
+    this.setState(s => {
+      let p = [...s.pattern];
+      if (n > p.length) while (p.length < n) p.push(0);
+      else p = p.slice(0, n);
+      return { steps: n, pattern: p, playhead: -1 };
+    });
+  }
+  _magicTab(active) {
+    return `height:30px;padding:0 12px;border-radius:7px;border:none;background:${active ? 'var(--accent)' : 'transparent'};color:${active ? '#fff' : 'rgba(255,255,255,.6)'};font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer`;
+  }
+  _segTab(active) {
+    return `height:32px;padding:0 13px;border-radius:8px;border:none;background:${active ? 'var(--accent)' : 'transparent'};color:${active ? '#fff' : 'var(--muted,#9a9aa7)'};font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;transition:all .15s`;
+  }
+  _segMini(active) {
+    return `min-width:30px;height:26px;border-radius:6px;border:none;background:${active ? 'var(--accent)' : 'transparent'};color:${active ? '#fff' : 'var(--muted,#9a9aa7)'};font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;cursor:pointer`;
+  }
+  _toggleTrack(on) {
+    return `position:relative;width:42px;height:24px;flex-shrink:0;border-radius:20px;border:none;cursor:pointer;background:${on ? 'var(--accent)' : 'var(--sunk,#08080b)'};border:1px solid ${on ? 'transparent' : 'var(--border,#262630)'};transition:background .2s`;
+  }
+  _toggleKnob(on) {
+    return `position:absolute;top:2px;left:${on ? 20 : 2}px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.4)`;
+  }
+  _segBtn(active) {
+    return `min-width:34px;height:28px;border-radius:7px;border:none;background:${active ? 'var(--accent)' : 'transparent'};color:${active ? '#fff' : 'var(--muted,#9a9aa7)'};font-size:15px;cursor:pointer;transition:all .15s`;
+  }
+}
+</script>
+</body>
+</html>

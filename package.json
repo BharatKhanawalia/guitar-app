@@ -11,6 +11,7 @@
     "samples:fetch": "node scripts/fetch-guitar-samples.mjs"
   },
   "dependencies": {
+    "@breezystack/lamejs": "^1.2.7",
     "@huggingface/transformers": "^3.8.1",
     "@mediapipe/tasks-vision": "^0.10.35",
     "chordsheetjs": "^15.5.2",

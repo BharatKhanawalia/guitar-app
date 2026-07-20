@@ -18,14 +18,15 @@ import FretboardDiagram from './components/FretboardDiagram'
 import ErrorBoundary from './components/ErrorBoundary'
 import { isChord, respellChord } from './lib/chordTheory'
 import { useStore } from './store.jsx'
+import { useTheme } from './lib/theme'
 
 const TABS = [
-  { id: 'capo', label: 'Capo Optimizer', icon: '🎸' },
+  { id: 'capo', label: 'Capo Calculator', icon: '🎸' },
   { id: 'sheet', label: 'Sheet Transposer', icon: '🎼' },
   { id: 'strum', label: 'Strumming Studio', icon: '🥁' },
   { id: 'audio', label: 'Audio → Chords', icon: '🎧' },
-  { id: 'tuner', label: 'Pro Tuner', icon: '🎯' },
-  { id: 'ar', label: 'AR Studio', icon: '✋' },
+  { id: 'tuner', label: 'Guitar Tuner', icon: '🎯' },
+  { id: 'ar', label: 'Magic Chords', icon: '✋' },
 ]
 
 const pageVariants = {
@@ -38,6 +39,7 @@ export default function App() {
   const [tab, setTab] = useState('capo')
   const { chords, setChords, preferFlats, setPreferFlats } = useStore()
   const [manual, setManual] = useState('')
+  const [theme, toggleTheme] = useTheme()
 
   const addManual = (e) => {
     e.preventDefault()
@@ -54,7 +56,7 @@ export default function App() {
 
   return (
     <>
-      <Background />
+      <Background theme={theme} />
       <AmbientParticles />
       <CursorNotes />
 
@@ -77,13 +79,14 @@ export default function App() {
               <p className="text-xs text-white/40">Play smarter. Sound the same.</p>
             </div>
           </div>
-          <a
-            href="https://github.com"
-            onClick={(e) => e.preventDefault()}
-            className="hidden sm:inline-flex chip text-white/60 hover:text-white"
+          <button
+            onClick={toggleTheme}
+            className="inline-flex items-center justify-center w-10 h-10 rounded-full chip !p-0 text-white/70 hover:text-white"
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            aria-label="Toggle light / dark theme"
           >
-            v3 · AR Edition
-          </a>
+            <span className="text-base">{theme === 'dark' ? '☀️' : '🌙'}</span>
+          </button>
         </header>
 
         {/* Tab nav */}
@@ -186,19 +189,7 @@ export default function App() {
 
             {tab === 'strum' && <StrummingStudio />}
 
-            {tab === 'audio' && (
-              <ErrorBoundary label="Audio → Chords">
-                <Suspense
-                  fallback={
-                    <div className="glass p-10 text-center text-white/50 max-w-3xl mx-auto">
-                      Loading Audio → Chords…
-                    </div>
-                  }
-                >
-                  <AudioToChords />
-                </Suspense>
-              </ErrorBoundary>
-            )}
+            {tab === 'audio' && <AudioComingSoon />}
 
             {tab === 'tuner' && (
               <div className="max-w-xl mx-auto">
@@ -223,10 +214,90 @@ export default function App() {
           </motion.div>
         </div>
 
-        <footer className="mt-16 text-center text-xs text-white/25">
-          CapoFlow — client-side music theory with Tonal.js, ChordSheetJS, Tone.js & Framer Motion.
-        </footer>
+        <SiteFooter />
       </div>
     </>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Audio → Chords — temporarily gated behind a polished "coming soon". */
+/* The heavy AudioToChords chunk (DSP + ML + workers) is never rendered */
+/* here, so it costs zero load/CPU until the feature is re-enabled.    */
+/* ------------------------------------------------------------------ */
+function AudioComingSoon() {
+  return (
+    <div className="max-w-2xl mx-auto">
+      <div className="glass p-8 sm:p-12 text-center relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-accent-500/10 via-transparent to-mint-400/10 pointer-events-none" />
+        <div className="relative">
+          <div className="text-6xl mb-4">🎧✨</div>
+          <span className="chip text-accent-300 !py-1 mb-4 inline-flex">Coming soon</span>
+          <h2 className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-accent-300 to-mint-300 bg-clip-text text-transparent mb-3">
+            Audio → Chords
+          </h2>
+          <p className="text-white/60 text-sm sm:text-base max-w-md mx-auto">
+            Drop in any song and get the chords, beat grid and lyrics — all worked out right in your
+            browser. We&rsquo;re polishing the AI to get it accurate on real recordings before we hand it to you.
+          </p>
+          <p className="text-white/35 text-xs mt-6">Meanwhile, try the Capo Calculator, Sheet Transposer or Magic Chords →</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* Consumer-facing footer: FAQ · Contact · legal placeholders. */
+const FAQ = [
+  { q: 'Is CapoFlow free?', a: 'Yes — completely free, with no sign-up. Everything runs right in your browser.' },
+  { q: 'Does my audio get uploaded anywhere?', a: 'No. Your microphone and any audio you use stay on your device — nothing is sent to a server.' },
+  { q: 'What is a capo, and how does the Capo Calculator help?', a: 'A capo clamps the strings to raise the pitch so you can play easier open-chord shapes. The calculator finds the fret that makes your song easiest to play.' },
+  { q: 'Do I need to install anything?', a: 'No installation — it works in any modern browser on desktop or mobile.' },
+]
+function SiteFooter() {
+  return (
+    <footer className="mt-16 border-t border-white/10 pt-10 pb-6">
+      <div className="grid gap-8 sm:grid-cols-3 text-sm">
+        <div>
+          <h3 className="font-bold mb-2 flex items-center gap-2"><span className="text-accent-400">🎸</span> CapoFlow</h3>
+          <p className="text-white/45 leading-relaxed text-[13px]">
+            Play smarter, sound the same. Free tools to find easier chords, transpose sheets, tune your
+            guitar and practice your strumming — all in your browser.
+          </p>
+        </div>
+        <div>
+          <h4 className="font-semibold mb-2 text-white/80">FAQ</h4>
+          <ul className="space-y-2">
+            {FAQ.map((f) => (
+              <li key={f.q}>
+                <details className="group">
+                  <summary className="cursor-pointer text-white/60 hover:text-white/90 marker:text-accent-400/70 text-[13px]">
+                    {f.q}
+                  </summary>
+                  <p className="text-white/40 text-[12px] mt-1 leading-relaxed">{f.a}</p>
+                </details>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <h4 className="font-semibold mb-2 text-white/80">Contact</h4>
+          <p className="text-white/45 text-[13px]">
+            Questions or feedback? Mail us at{' '}
+            <a href="mailto:" className="text-accent-300 hover:text-accent-200 underline decoration-dotted">
+              [your email here]
+            </a>
+            .
+          </p>
+          <div className="flex gap-4 mt-4 text-[12px] text-white/40">
+            <a href="#" className="hover:text-white/70">Terms</a>
+            <a href="#" className="hover:text-white/70">Privacy</a>
+          </div>
+        </div>
+      </div>
+      <div className="text-center text-[11px] text-white/25 mt-8">
+        © {2026} CapoFlow · Made for guitarists everywhere.
+      </div>
+    </footer>
   )
 }

@@ -1,8 +1,9 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { parseChordSheet } from '../lib/parser'
-import { transposeChord, simplifyChord, isChord, detectKey } from '../lib/chordTheory'
-import { playChord } from '../lib/audioEngine'
+import { transposeChord, simplifyChord, isChord, detectKey, optimizeCapo } from '../lib/chordTheory'
+import { exportPDF, exportDOCX } from '../lib/exporters'
+import { playChordShifted } from '../lib/audioEngine'
 import useKeyboardTranspose from '../hooks/useKeyboardTranspose'
 import EnharmonicToggle from './EnharmonicToggle'
 import { useStore } from '../store.jsx'
@@ -49,7 +50,10 @@ function EditToggle({ editing, onClick }) {
   )
 }
 
-function InteractiveChord({ symbol }) {
+// `capo` = the capo fret implied by the current transpose (see below). We play the
+// chord PITCH-SHIFTED up by the capo so you hear what it actually sounds like with
+// the capo on — not the raw open-shape pitch.
+function InteractiveChord({ symbol, capo = 0 }) {
   return (
     <AnimatePresence mode="popLayout">
       <motion.button
@@ -58,7 +62,7 @@ function InteractiveChord({ symbol }) {
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 6, opacity: 0 }}
         transition={{ duration: 0.18 }}
-        onClick={() => playChord(symbol)}
+        onClick={() => playChordShifted(symbol, capo)}
         className="text-accent-400 font-bold hover:text-mint-400 transition-colors cursor-pointer"
       >
         {symbol}
@@ -80,7 +84,9 @@ export default function SheetTransposer() {
     setPreferFlats,
   } = useStore()
   const [editing, setEditing] = useState(false)
-  const [showTips, setShowTips] = useState(true) // collapse the guide + capo note to free space
+  const [showTips, setShowTips] = useState(false) // hidden by default → sheet gets the space
+  const [fontSize, setFontSize] = useState(15) // chord-sheet display size (px)
+  const [exportDialog, setExportDialog] = useState(null) // { fn, label } | null
 
   // Autoscroll
   const [scrolling, setScrolling] = useState(false)
@@ -107,6 +113,51 @@ export default function SheetTransposer() {
   }, [model, semitones, simplify, preferFlats])
 
   const key = useMemo(() => detectKey(allChords), [allChords])
+
+  // Original (untransposed) chords, in order — feeds the capo optimizer.
+  const originalChords = useMemo(() => {
+    const seen = new Set()
+    const out = []
+    model.lines.forEach((l) =>
+      l.pairs.forEach((p) => {
+        if (p.chord && isChord(p.chord) && !seen.has(p.chord)) { seen.add(p.chord); out.push(p.chord) }
+      }),
+    )
+    return out
+  }, [model])
+
+  // "Easiest chords": run the progression through the Capo Optimizer and transpose
+  // DOWN by the best capo fret, so the sheet shows the simplest open shapes.
+  const easiestChords = () => {
+    if (!originalChords.length) return
+    const best = optimizeCapo(originalChords, 11, preferFlats).find((r) => r.recommended)
+    if (best) setSemitones(-best.capo)
+  }
+
+  // Convert the parsed sheet → exporter rows (chords with columns over lyric text),
+  // honoring the current transpose + simplify.
+  const buildExportLines = () =>
+    model.lines.map((line) => {
+      if (line.type === 'tab') return { chords: [], text: line.text }
+      if (line.type === 'blank') return { chords: [], text: '' }
+      const chords = []
+      let text = ''
+      for (const p of line.pairs) {
+        if (p.chord && isChord(p.chord)) chords.push({ chord: renderChord(p.chord), col: text.length })
+        text += p.lyrics || ''
+      }
+      return { chords, text: text.replace(/\s+$/, '') }
+    })
+  const doExport = async (fn, title) => {
+    try {
+      await fn((title && title.trim()) || 'Chord Sheet', buildExportLines(), {
+        key: key?.label,
+        capo: Math.max(0, -semitones) || undefined,
+      })
+    } catch (e) {
+      console.error('Export failed:', e)
+    }
+  }
 
   useKeyboardTranspose({
     onUp: () => setSemitones((s) => Math.min(11, s + 1)),
@@ -150,13 +201,23 @@ export default function SheetTransposer() {
 
   return (
     <div className="space-y-4">
-      {/* Tips toggle — collapse the guide + capo note so the sheet isn't pushed down */}
-      <div className="flex justify-end -mb-1">
+      {exportDialog && (
+        <ExportDialog
+          label={exportDialog.label}
+          onCancel={() => setExportDialog(null)}
+          onConfirm={(title) => { doExport(exportDialog.fn, title); setExportDialog(null) }}
+        />
+      )}
+      {/* Tips toggle — centred & highlighted so it's obvious. Hidden by default. */}
+      <div className="flex justify-center">
         <button
           onClick={() => setShowTips((s) => !s)}
-          className="chip text-xs text-white/60 hover:text-white"
+          className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold
+                     text-accent-200 bg-accent-500/15 border border-accent-400/40
+                     hover:bg-accent-500/30 hover:border-accent-400/70 active:scale-95 transition-all
+                     shadow-[0_0_18px_-6px_rgba(139,92,246,0.7)]"
         >
-          {showTips ? '▴ Hide tips' : '▾ Show tips & capo help'}
+          {showTips ? '▴ Hide tips & capo help' : '💡 Show tips & capo help'}
         </button>
       </div>
 
@@ -230,10 +291,33 @@ export default function SheetTransposer() {
             onChange={(e) => setSimplify(e.target.checked)}
             className="accent-accent-500"
           />
-          Simplify
+          <span title="Converts complex chords (like sus, maj7, add9, etc.) into basic, easy-to-play major and minor chords.">
+            Simplify
+          </span>
         </label>
 
+        <button
+          onClick={easiestChords}
+          className="chip font-semibold text-mint-300 border-mint-400/40 bg-mint-400/10 hover:bg-mint-400/20"
+          title="Auto-transpose to the easiest chord shapes (uses the Capo Calculator)"
+        >
+          ✨ Easiest chords
+        </button>
+
         <EnharmonicToggle flats={preferFlats} onChange={setPreferFlats} id="sheet" />
+
+        {/* Font size */}
+        <div className="flex items-center gap-1 bg-white/5 rounded-xl p-1" title="Chord-sheet text size">
+          <button onClick={() => setFontSize((f) => Math.max(11, f - 1))} className="btn-ghost !px-2.5 !py-1 !rounded-lg text-xs" aria-label="Smaller text">A−</button>
+          <span className="text-xs text-white/50 w-6 text-center tabular-nums">{fontSize}</span>
+          <button onClick={() => setFontSize((f) => Math.min(28, f + 1))} className="btn-ghost !px-2.5 !py-1 !rounded-lg text-sm" aria-label="Larger text">A+</button>
+        </div>
+
+        {/* Export */}
+        <div className="flex items-center gap-1">
+          <button onClick={() => setExportDialog({ fn: exportPDF, label: 'PDF' })} className="chip hover:bg-accent-500/20" title="Download as PDF">⬇ PDF</button>
+          <button onClick={() => setExportDialog({ fn: exportDOCX, label: 'Word' })} className="chip hover:bg-accent-500/20" title="Download as Word (.docx)">⬇ DOCX</button>
+        </div>
 
         <button
           onClick={() => setScrolling((s) => !s)}
@@ -288,7 +372,8 @@ export default function SheetTransposer() {
             <EditToggle editing={false} onClick={() => setEditing(true)} />
             <div
               ref={sheetRef}
-              className={`p-5 sm:p-7 font-mono text-[15px] leading-relaxed overflow-y-auto ${showTips ? 'max-h-[55vh]' : 'max-h-[calc(100vh-13rem)]'}`}
+              style={{ fontSize: `${fontSize}px` }}
+              className={`p-5 sm:p-7 font-mono leading-relaxed overflow-y-auto ${showTips ? 'max-h-[55vh]' : 'max-h-[calc(100vh-13rem)]'}`}
             >
               {model.lines.map((line, li) => {
               if (line.type === 'blank') return <div key={li} className="h-4" />
@@ -315,7 +400,7 @@ export default function SheetTransposer() {
                     <span key={pi} className="inline-flex flex-col">
                       <span className="h-6 leading-6">
                         {pair.chord && isChord(pair.chord) ? (
-                          <InteractiveChord symbol={renderChord(pair.chord)} />
+                          <InteractiveChord symbol={renderChord(pair.chord)} capo={Math.max(0, -semitones)} />
                         ) : (
                           <span className="text-accent-400/80">{pair.chord}</span>
                         )}
@@ -394,5 +479,45 @@ function CapoTransposeNote({ semitones }) {
       </motion.span>
       <p className="text-[13px] leading-relaxed text-white/80">{headline}</p>
     </motion.div>
+  )
+}
+
+/* ---- app-style dialog: name the song before exporting ---- */
+function ExportDialog({ label, onCancel, onConfirm }) {
+  const [title, setTitle] = useState('')
+  return (
+    <AnimatePresence>
+      <motion.div
+        className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/70 backdrop-blur-sm"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onCancel}
+      >
+        <motion.div
+          className="glass w-full max-w-sm p-6 rounded-2xl border border-accent-400/25"
+          initial={{ scale: 0.92, y: 12 }}
+          animate={{ scale: 1, y: 0 }}
+          exit={{ scale: 0.92, opacity: 0 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="text-3xl mb-2">📄</div>
+          <h3 className="font-bold text-lg mb-1">Download {label}</h3>
+          <p className="text-sm text-white/50 mb-4">Give your sheet a title — it appears at the top of the file.</p>
+          <input
+            autoFocus
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') onConfirm(title) }}
+            placeholder="Song title (optional)"
+            className="w-full bg-black/30 border border-white/15 focus:border-accent-400/60 rounded-xl px-4 py-2.5 text-sm outline-none mb-5"
+          />
+          <div className="flex gap-2">
+            <button onClick={onCancel} className="btn-ghost flex-1">Cancel</button>
+            <button onClick={() => onConfirm(title)} className="btn-primary flex-1">⬇ Download</button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   )
 }

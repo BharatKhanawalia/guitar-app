@@ -105,8 +105,14 @@ export default function ChordPicker({ selected, onChange, preferFlats = false })
           {selected.length > 0 && (
             <button
               onClick={() => onChange([])}
-              className="text-[11px] text-white/40 hover:text-rose-300 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold
+                         text-rose-200 bg-rose-500/15 border border-rose-400/40
+                         hover:bg-rose-500/30 hover:border-rose-400/70 active:scale-95 transition-all"
+              title="Remove every chord from your progression"
             >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+              </svg>
               Clear all
             </button>
           )}
