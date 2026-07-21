@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { GUITAR_STRINGS } from '../lib/tuner'
+import { pluckNote } from '../lib/stringPluck'
 
 /**
  * Headstock — an anatomically-correct, front-facing 6-string acoustic guitar
@@ -88,66 +89,89 @@ function vibratingPath(s, amp) {
 /* ------------------------------------------------------------------ */
 /* Machine head (tuning peg)                                          */
 /* ------------------------------------------------------------------ */
-function Peg({ s, isNear, inTune, glow, ring }) {
-  const inner = s.side === 'L' ? s.buttonX + 10 : s.buttonX - 10
-  const knobFill = isNear
-    ? inTune
-      ? 'rgba(52,211,153,0.28)'
-      : 'rgba(139,92,246,0.28)'
-    : 'rgba(214,206,232,0.14)'
+function Peg({ s, isNear, inTune, done }) {
+  const inner = s.side === 'L' ? s.buttonX + 12 : s.buttonX - 12
+  const labelX = s.side === 'L' ? s.buttonX - 32 : s.buttonX + 32
+  const activeGreen = (isNear && inTune) || done
+  const accent = activeGreen ? '#34d399' : '#8b5cf6'
+  const labelColor = activeGreen ? '#4ade80' : isNear ? '#c4b5fd' : 'rgba(233,230,245,0.6)'
+  const labelGlow = activeGreen ? '0 0 10px rgba(52,211,153,0.9)' : isNear ? '0 0 8px rgba(139,92,246,0.75)' : null
 
   return (
     <motion.g
-      animate={{ scale: isNear ? 1.14 : 1 }}
+      animate={{ scale: isNear ? 1.12 : 1 }}
       transition={{ type: 'spring', stiffness: 300, damping: 18 }}
       style={{ originX: `${s.buttonX}px`, originY: `${s.pegY}px` }}
     >
-      {/* post — bar from the wood edge out to the button */}
+      {/* soft glow halo while tuning / once done */}
+      {(isNear || done) && <circle cx={s.buttonX} cy={s.pegY} r={24} fill={accent} opacity={0.16} />}
+
+      {/* chrome post — bar from the wood edge out to the button */}
       <rect
         x={Math.min(inner, s.postX)}
-        y={s.pegY - 3}
+        y={s.pegY - 3.5}
         width={Math.abs(s.postX - inner)}
-        height={6}
-        rx={3}
-        fill="rgba(220,214,238,0.32)"
+        height={7}
+        rx={3.5}
+        fill="url(#hs-chrome-post)"
+        stroke="rgba(0,0,0,0.35)"
+        strokeWidth="0.6"
       />
       {/* string post collar where the string wraps */}
-      <circle cx={s.postX} cy={s.pegY} r={5} fill="#c9c0e0" stroke="rgba(0,0,0,0.35)" strokeWidth="0.8" />
+      <circle cx={s.postX} cy={s.pegY} r={5.4} fill="url(#hs-chrome-knob)" stroke="rgba(0,0,0,0.4)" strokeWidth="0.8" />
+      <circle cx={s.postX} cy={s.pegY} r={1.8} fill="rgba(28,30,40,0.6)" />
 
-      {/* glow halo when active */}
-      {isNear && <circle cx={s.buttonX} cy={s.pegY} r={22} fill={glow} opacity={0.16} />}
-
-      {/* tuner button (the knob you turn) */}
+      {/* chrome tuner button (the knob you turn) */}
       <ellipse
         cx={s.buttonX}
         cy={s.pegY}
-        rx={16}
-        ry={11}
-        fill={knobFill}
-        stroke={ring}
-        strokeWidth={2}
-        style={{ filter: isNear ? `drop-shadow(0 0 10px ${glow})` : 'none' }}
+        rx={17}
+        ry={12}
+        fill="url(#hs-chrome-knob)"
+        stroke="rgba(18,20,28,0.55)"
+        strokeWidth={1.2}
+        style={{ filter: isNear || done ? `drop-shadow(0 0 9px ${accent})` : 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }}
       />
-      <ellipse cx={s.buttonX} cy={s.pegY - 2} rx={9} ry={5} fill="rgba(255,255,255,0.10)" />
+      {/* specular shine for the chrome look */}
+      <ellipse cx={s.buttonX - 3.5} cy={s.pegY - 3.8} rx={8} ry={3.6} fill="rgba(255,255,255,0.6)" />
+      {/* coloured ring while tuning / once tuned */}
+      {(isNear || done) && (
+        <ellipse cx={s.buttonX} cy={s.pegY} rx={17} ry={12} fill="none" stroke={activeGreen ? '#34d399' : '#a78bfa'} strokeWidth={2} />
+      )}
 
-      {/* string label sits on the outer flank of the button */}
-      <text
-        x={s.side === 'L' ? s.buttonX - 26 : s.buttonX + 26}
-        y={s.pegY + 4}
-        textAnchor="middle"
-        fontSize="14"
-        fontWeight="800"
-        fontFamily="JetBrains Mono, monospace"
-        fill={isNear ? (inTune ? '#eafff5' : '#efeaff') : 'rgba(255,255,255,0.5)'}
+      {/* string label — larger, glows green once tuned, and taps to hear the
+          open-string note. */}
+      <g
+        onClick={() => pluckNote(s.name, 0.85)}
+        style={{ cursor: 'pointer' }}
+        role="button"
+        aria-label={`Play open ${s.label} string`}
       >
-        {s.label}
-      </text>
+        <circle cx={labelX} cy={s.pegY} r={18} fill="transparent" />
+        <text
+          x={labelX}
+          y={s.pegY + 6}
+          textAnchor="middle"
+          fontSize="21"
+          fontWeight="800"
+          fontFamily="JetBrains Mono, monospace"
+          fill={labelColor}
+          style={labelGlow ? { filter: `drop-shadow(${labelGlow})` } : undefined}
+        >
+          {s.label}
+        </text>
+        {done && (
+          <text x={labelX} y={s.pegY + 22} textAnchor="middle" fontSize="11" fontWeight="700" fill="#4ade80" fontFamily="JetBrains Mono, monospace">
+            ✓
+          </text>
+        )}
+      </g>
     </motion.g>
   )
 }
 
 /* ------------------------------------------------------------------ */
-export default function Headstock({ pitch, active, inTune }) {
+export default function Headstock({ pitch, active, inTune, completed }) {
   const nearName = pitch?.nearestString?.name
 
   // Body outline: nut corners → shoulders → rounded crown → back down.
@@ -179,6 +203,18 @@ export default function Headstock({ pitch, active, inTune }) {
         <linearGradient id="hs-nut" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#f4efe2" />
           <stop offset="1" stopColor="#cfc7b3" />
+        </linearGradient>
+        {/* Chrome / polished-steel finish for the tuning machines. */}
+        <radialGradient id="hs-chrome-knob" cx="0.34" cy="0.28" r="0.95">
+          <stop offset="0" stopColor="#fbfcff" />
+          <stop offset="0.35" stopColor="#ccd2de" />
+          <stop offset="0.7" stopColor="#868da0" />
+          <stop offset="1" stopColor="#565d6f" />
+        </radialGradient>
+        <linearGradient id="hs-chrome-post" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#eef1f7" />
+          <stop offset="0.5" stopColor="#aab1bf" />
+          <stop offset="1" stopColor="#6a7182" />
         </linearGradient>
       </defs>
 
@@ -231,7 +267,7 @@ export default function Headstock({ pitch, active, inTune }) {
       {/* Strings + pegs */}
       {LAYOUT.map((s) => {
         const isNear = active && nearName === s.name
-        const ring = isNear ? (inTune ? '#34d399' : '#a78bfa') : 'rgba(220,214,238,0.35)'
+        const done = completed?.has(s.name)
         const glow = isNear ? (inTune ? '#34d399' : '#8b5cf6') : 'transparent'
         // low strings are visibly thicker
         const gauge = 1.3 + (5 - s.i) * 0.42
@@ -253,13 +289,13 @@ export default function Headstock({ pitch, active, inTune }) {
               <path
                 d={stringPath(s)}
                 fill="none"
-                stroke="rgba(226,222,240,0.55)"
+                stroke={done ? 'rgba(74,222,128,0.6)' : 'rgba(226,222,240,0.55)'}
                 strokeWidth={gauge}
                 strokeLinecap="round"
               />
             )}
 
-            <Peg s={s} isNear={isNear} inTune={inTune} glow={glow} ring={ring} />
+            <Peg s={s} isNear={isNear} inTune={inTune} done={done} />
           </g>
         )
       })}

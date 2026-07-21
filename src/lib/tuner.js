@@ -147,10 +147,11 @@ export async function createTuner(onPitch) {
 
   const buffer = new Float32Array(analyser.fftSize)
   const history = [] // recent frequency estimates for median smoothing
-  const HIST = 6
+  const HIST = 8
   let raf = null
   let stopped = false
   let silence = 0
+  let ema = null // exponential moving average of frequency (the smoothed value shown)
 
   const tick = () => {
     if (stopped) return
@@ -168,13 +169,20 @@ export async function createTuner(onPitch) {
         const med = median(history)
         // Reject frames that disagree wildly with the running median (glitches).
         const spread = Math.abs(freq - med) / med
-        if (spread < 0.06) {
-          const note = freqToNote(med)
+        if (spread < 0.08) {
+          // Exponential smoothing in the log/cents domain. Adaptive: snap quickly
+          // when you pluck a different string (big jump), then settle to a heavy
+          // smoothing so a held note reads rock-steady instead of dancing ±cents.
+          const jumpCents = ema ? Math.abs(1200 * Math.log2(med / ema)) : 9999
+          const alpha = jumpCents > 90 ? 0.6 : jumpCents > 30 ? 0.3 : 0.12
+          ema = ema == null ? med : Math.exp(Math.log(ema) * (1 - alpha) + Math.log(med) * alpha)
+
+          const note = freqToNote(ema)
           const nearestString = GUITAR_STRINGS.reduce((best, s) =>
-            Math.abs(s.freq - med) < Math.abs(best.freq - med) ? s : best,
+            Math.abs(s.freq - ema) < Math.abs(best.freq - ema) ? s : best,
           )
           onPitch({
-            freq: med,
+            freq: ema,
             note,
             cents: note.cents,
             nearestString,
@@ -187,6 +195,7 @@ export async function createTuner(onPitch) {
       silence++
       if (silence > 12) {
         history.length = 0
+        ema = null
         onPitch(null)
       }
     }

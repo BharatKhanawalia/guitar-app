@@ -1,32 +1,35 @@
-import { useState, lazy, Suspense } from 'react'
+import { useState } from 'react'
 import { motion, LayoutGroup } from 'framer-motion'
 import Background from './components/Background'
 import CursorNotes from './components/CursorNotes'
+import GlowCursor from './components/GlowCursor'
 import AmbientParticles from './components/AmbientParticles'
+import HomePage from './components/HomePage'
+import TopBar from './components/TopBar'
+import MenuOverlay from './components/MenuOverlay'
+import ModuleIcon from './components/NavIcons'
 import ChordPicker from './components/ChordPicker'
 import CapoOptimizer from './components/CapoOptimizer'
 import SheetTransposer from './components/SheetTransposer'
 import Tuner from './components/Tuner'
 import StrummingStudio from './components/StrummingStudio'
-// AR Studio pulls in the heavy MediaPipe hand-tracking bundle — load it only
-// when the tab is opened so it never weighs down the initial app load.
-const ARStudio = lazy(() => import('./components/ARStudio'))
-// Audio→Chords carries the DSP + export libs — lazy-load it the same way.
-const AudioToChords = lazy(() => import('./components/audio2chords/AudioToChords'))
+// Magic Chords + Audio → Chords each open behind a Fretwork intro card; the
+// heavy studio/DSP bundles lazy-load from inside those panels.
+import MagicChordsPanel from './components/MagicChordsPanel'
+import AudioToChordsPanel from './components/AudioToChordsPanel'
 import EnharmonicToggle from './components/EnharmonicToggle'
 import FretboardDiagram from './components/FretboardDiagram'
 import ErrorBoundary from './components/ErrorBoundary'
 import { isChord, respellChord } from './lib/chordTheory'
 import { useStore } from './store.jsx'
-import { useTheme } from './lib/theme'
 
 const TABS = [
-  { id: 'capo', label: 'Capo Calculator', icon: '🎸' },
-  { id: 'sheet', label: 'Sheet Transposer', icon: '🎼' },
-  { id: 'strum', label: 'Strumming Studio', icon: '🥁' },
-  { id: 'audio', label: 'Audio → Chords', icon: '🎧' },
-  { id: 'tuner', label: 'Guitar Tuner', icon: '🎯' },
-  { id: 'ar', label: 'Magic Chords', icon: '✋' },
+  { id: 'capo', label: 'Capo Calculator' },
+  { id: 'sheet', label: 'Sheet Transposer' },
+  { id: 'strum', label: 'Strumming Studio' },
+  { id: 'audio', label: 'Audio → Chords' },
+  { id: 'tuner', label: 'Guitar Tuner' },
+  { id: 'ar', label: 'Magic Chords' },
 ]
 
 const pageVariants = {
@@ -36,10 +39,20 @@ const pageVariants = {
 }
 
 export default function App() {
-  const [tab, setTab] = useState('capo')
+  const [tab, setTab] = useState('home')
+  const [menuOpen, setMenuOpen] = useState(false)
+  // True while the Magic Chords studio is full-screen — the app chrome (top bar,
+  // cursor effects) is removed so it can't cover the studio's own controls.
+  const [immersive, setImmersive] = useState(false)
   const { chords, setChords, preferFlats, setPreferFlats } = useStore()
   const [manual, setManual] = useState('')
-  const [theme, toggleTheme] = useTheme()
+
+  // Switch module and always dismiss the overlay menu.
+  const navigate = (id) => {
+    setTab(id)
+    setMenuOpen(false)
+  }
+  const isHome = tab === 'home'
 
   const addManual = (e) => {
     e.preventDefault()
@@ -56,63 +69,51 @@ export default function App() {
 
   return (
     <>
-      <Background theme={theme} />
-      <AmbientParticles />
-      <CursorNotes />
+      <Background />
+      {!immersive && <AmbientParticles />}
+      {!immersive && <CursorNotes />}
+      {!immersive && <GlowCursor />}
+
+      {!immersive && (
+        <>
+          <MenuOverlay open={menuOpen} current={tab} onNavigate={navigate} onClose={() => setMenuOpen(false)} />
+          <TopBar
+            menuOpen={menuOpen}
+            onToggleMenu={() => setMenuOpen((o) => !o)}
+            onLogoClick={() => navigate('home')}
+          />
+        </>
+      )}
 
       <div className="min-h-screen max-w-6xl mx-auto px-4 sm:px-6 pb-24 pt-6">
-        {/* Header */}
-        <header className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <motion.div
-              initial={{ rotate: -12, scale: 0.8 }}
-              animate={{ rotate: 0, scale: 1 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 12 }}
-              className="w-11 h-11 rounded-2xl bg-gradient-to-br from-accent-400 to-accent-600 grid place-items-center shadow-glow text-xl"
-            >
-              🎸
-            </motion.div>
-            <div>
-              <h1 className="text-2xl font-extrabold tracking-tight leading-none">
-                Capo<span className="text-accent-400">Flow</span>
-              </h1>
-              <p className="text-xs text-white/40">Play smarter. Sound the same.</p>
-            </div>
-          </div>
-          <button
-            onClick={toggleTheme}
-            className="inline-flex items-center justify-center w-10 h-10 rounded-full chip !p-0 text-white/70 hover:text-white"
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            aria-label="Toggle light / dark theme"
-          >
-            <span className="text-base">{theme === 'dark' ? '☀️' : '🌙'}</span>
-          </button>
-        </header>
-
-        {/* Tab nav */}
-        <LayoutGroup>
-          <nav className="glass p-1.5 inline-flex gap-1 mb-8 w-full sm:w-auto overflow-x-auto">
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={`relative px-4 sm:px-5 py-2.5 rounded-xl font-semibold text-sm whitespace-nowrap transition-colors ${
-                  tab === t.id ? 'text-white' : 'text-white/50 hover:text-white/80'
-                }`}
-              >
-                {tab === t.id && (
-                  <motion.span
-                    layoutId="tab-pill"
-                    className="absolute inset-0 bg-accent-500/80 rounded-xl shadow-glow -z-10"
-                    transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-                  />
-                )}
-                <span className="mr-1.5">{t.icon}</span>
-                {t.label}
-              </button>
-            ))}
-          </nav>
-        </LayoutGroup>
+        {/* Tab nav — hidden on the Home landing page (reach modules via the
+            hero cards or the overlay menu). */}
+        {!isHome && (
+          <LayoutGroup>
+            <nav className="glass p-1.5 inline-flex gap-1 mb-8 w-full sm:w-auto overflow-x-auto">
+              {TABS.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setTab(t.id)}
+                  data-active={tab === t.id}
+                  className="gt-ico-host gt-navbtn relative inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl font-semibold text-sm whitespace-nowrap transition-colors"
+                >
+                  {tab === t.id && (
+                    <motion.span
+                      layoutId="tab-pill"
+                      className="absolute inset-0 bg-accent-500/80 rounded-xl shadow-glow -z-10"
+                      transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+                    />
+                  )}
+                  <span className="flex shrink-0" aria-hidden="true">
+                    <ModuleIcon id={t.id} size={15} />
+                  </span>
+                  {t.label}
+                </button>
+              ))}
+            </nav>
+          </LayoutGroup>
+        )}
 
         {/* Pages — keyed motion.div so switching tabs unmounts the previous page
             synchronously (mic released, timers cleared). Shared chord/sheet state
@@ -126,6 +127,8 @@ export default function App() {
             transition={{ duration: 0.28 }}
           >
            <ErrorBoundary label="This section">
+            {tab === 'home' && <HomePage onOpen={navigate} />}
+
             {tab === 'capo' && (
               <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-6 items-start">
                 {/* Left: input */}
@@ -189,7 +192,7 @@ export default function App() {
 
             {tab === 'strum' && <StrummingStudio />}
 
-            {tab === 'audio' && <AudioComingSoon />}
+            {tab === 'audio' && <AudioToChordsPanel />}
 
             {tab === 'tuner' && (
               <div className="max-w-xl mx-auto">
@@ -197,19 +200,7 @@ export default function App() {
               </div>
             )}
 
-            {tab === 'ar' && (
-              <ErrorBoundary label="AR Studio">
-                <Suspense
-                  fallback={
-                    <div className="glass p-10 text-center text-white/50 max-w-4xl mx-auto">
-                      Loading AR Studio…
-                    </div>
-                  }
-                >
-                  <ARStudio />
-                </Suspense>
-              </ErrorBoundary>
-            )}
+            {tab === 'ar' && <MagicChordsPanel onImmersiveChange={setImmersive} />}
            </ErrorBoundary>
           </motion.div>
         </div>
@@ -217,33 +208,6 @@ export default function App() {
         <SiteFooter />
       </div>
     </>
-  )
-}
-
-/* ------------------------------------------------------------------ */
-/* Audio → Chords — temporarily gated behind a polished "coming soon". */
-/* The heavy AudioToChords chunk (DSP + ML + workers) is never rendered */
-/* here, so it costs zero load/CPU until the feature is re-enabled.    */
-/* ------------------------------------------------------------------ */
-function AudioComingSoon() {
-  return (
-    <div className="max-w-2xl mx-auto">
-      <div className="glass p-8 sm:p-12 text-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-accent-500/10 via-transparent to-mint-400/10 pointer-events-none" />
-        <div className="relative">
-          <div className="text-6xl mb-4">🎧✨</div>
-          <span className="chip text-accent-300 !py-1 mb-4 inline-flex">Coming soon</span>
-          <h2 className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-accent-300 to-mint-300 bg-clip-text text-transparent mb-3">
-            Audio → Chords
-          </h2>
-          <p className="text-white/60 text-sm sm:text-base max-w-md mx-auto">
-            Drop in any song and get the chords, beat grid and lyrics — all worked out right in your
-            browser. We&rsquo;re polishing the AI to get it accurate on real recordings before we hand it to you.
-          </p>
-          <p className="text-white/35 text-xs mt-6">Meanwhile, try the Capo Calculator, Sheet Transposer or Magic Chords →</p>
-        </div>
-      </div>
-    </div>
   )
 }
 

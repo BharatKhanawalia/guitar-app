@@ -23,7 +23,7 @@ const REPEL_RADIUS = 150
 const REPEL_FORCE = 2400 // acceleration scale inside the radius
 const HOME_SPRING = 0.006 // pull back toward the drifting home
 const DAMPING = 0.92 // velocity retention per frame
-const MAX_PARTICLES = 46
+const MAX_PARTICLES = 36
 
 const NOTE_GLYPHS = ['♪', '♫', '♩']
 
@@ -35,6 +35,22 @@ export default function AmbientParticles() {
 
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
+
+    // Pre-render the dot glow ONCE to an offscreen sprite. Blitting this each
+    // frame is far cheaper than per-particle shadowBlur or gradient allocation.
+    const SPR = 48
+    const glowSprite = document.createElement('canvas')
+    glowSprite.width = glowSprite.height = SPR
+    {
+      const g = glowSprite.getContext('2d')
+      const grad = g.createRadialGradient(SPR / 2, SPR / 2, 0, SPR / 2, SPR / 2, SPR / 2)
+      grad.addColorStop(0, 'rgba(200,186,255,1)')
+      grad.addColorStop(0.35, 'rgba(160,140,240,0.55)')
+      grad.addColorStop(1, 'rgba(139,92,246,0)')
+      g.fillStyle = grad
+      g.fillRect(0, 0, SPR, SPR)
+    }
+
     let dpr = Math.min(window.devicePixelRatio || 1, 2)
     let W = 0
     let H = 0
@@ -125,13 +141,11 @@ export default function AmbientParticles() {
           ctx.fillStyle = `rgba(196,181,253,${p.alpha * 0.75})`
           ctx.fillText(p.glyph, p.x, p.y)
         } else {
-          ctx.beginPath()
-          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
-          ctx.fillStyle = `rgba(180,170,240,${p.alpha})`
-          ctx.shadowColor = 'rgba(139,92,246,0.7)'
-          ctx.shadowBlur = 8
-          ctx.fill()
-          ctx.shadowBlur = 0
+          // Blit the pre-rendered glow sprite, sized/faded per particle.
+          const s = p.r * 6
+          ctx.globalAlpha = p.alpha
+          ctx.drawImage(glowSprite, p.x - s / 2, p.y - s / 2, s, s)
+          ctx.globalAlpha = 1
         }
       }
 

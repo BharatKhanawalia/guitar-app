@@ -280,7 +280,7 @@ const PianoKeyboard = memo(function PianoKeyboard({ startOct, octaves, activeNot
   )
 })
 
-export default function ARStudio() {
+export default function ARStudio({ autoEnter = false, onExit } = {}) {
   const [active, setActive] = useState(false)
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState(null)
@@ -297,7 +297,7 @@ export default function ARStudio() {
   const [virtualPiano, setVirtualPiano] = useState(false)
   const [volume, setVol] = useState(0) // 0 dB = max by default
   const [showHelp, setShowHelp] = useState(false)
-  const [entered, setEntered] = useState(false) // full-screen studio overlay
+  const [entered, setEntered] = useState(autoEnter) // full-screen studio overlay
   const [level, setLevel] = useState(-Infinity) // real output level (dB) for the HUD
 
   // Recording
@@ -542,7 +542,9 @@ export default function ARStudio() {
   useEffect(() => () => stop(), [stop])
 
   // Leaving the studio with an unsaved clip → in-app dialog (download or discard).
-  const doExit = () => { stop(); setEntered(false) }
+  // When launched from the Magic Chords panel (autoEnter), exiting hands control
+  // back to that panel instead of falling through to this component's own card.
+  const doExit = () => { stop(); if (onExit) onExit(); else setEntered(false) }
   const exit = () => {
     if (recording) { stopRecording(); doExit(); return }
     if (clip) {

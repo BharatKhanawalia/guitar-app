@@ -53,7 +53,7 @@ export default function FretboardDiagram({ symbol, size = 'md', accent = '#a78bf
           y1={fretY(f)}
           x2={left + boardW}
           y2={fretY(f)}
-          stroke="rgba(255,255,255,0.22)"
+          stroke="var(--dgm-line)"
           strokeWidth={1}
         />
       ))}
@@ -66,7 +66,7 @@ export default function FretboardDiagram({ symbol, size = 'md', accent = '#a78bf
           y1={dims.top}
           x2={stringX(s)}
           y2={dims.top + boardH}
-          stroke="rgba(255,255,255,0.28)"
+          stroke="var(--dgm-string)"
           strokeWidth={s === 0 ? 1.6 : 1}
         />
       ))}
@@ -77,7 +77,7 @@ export default function FretboardDiagram({ symbol, size = 'md', accent = '#a78bf
           x={left - 6}
           y={fretY(0) + dims.fretGap * 0.7}
           fontSize={dims.dot * 1.5}
-          fill="rgba(255,255,255,0.55)"
+          fill="var(--dgm-mark)"
           textAnchor="end"
           fontFamily="JetBrains Mono, monospace"
         >
@@ -111,7 +111,7 @@ export default function FretboardDiagram({ symbol, size = 'md', accent = '#a78bf
               x={x}
               y={dims.top - 6}
               fontSize={dims.dot * 1.7}
-              fill="rgba(255,255,255,0.4)"
+              fill="var(--dgm-mark)"
               textAnchor="middle"
             >
               ×
@@ -126,7 +126,7 @@ export default function FretboardDiagram({ symbol, size = 'md', accent = '#a78bf
               cy={dims.top - 8}
               r={dims.dot * 0.7}
               fill="none"
-              stroke="rgba(255,255,255,0.55)"
+              stroke="var(--dgm-mark)"
               strokeWidth={1.4}
             />
           )

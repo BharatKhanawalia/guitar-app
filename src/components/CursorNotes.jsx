@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion'
  */
 
 const GLYPHS = ['🎵', '🎶', '♩', '♪', '♫']
-const MAX_NOTES = 18
+const MAX_NOTES = 12
 const SPAWN_MS = 85 // min time between spawns
 const MOVE_MIN = 14 // min px moved between spawns
 

@@ -8,11 +8,15 @@ export default function Tuner() {
   const [active, setActive] = useState(false)
   const [pitch, setPitch] = useState(null)
   const [error, setError] = useState(null)
+  // Strings that have been held in tune long enough to count as "done" — their
+  // letter stays green + glowing on the headstock for the rest of the session.
+  const [completed, setCompleted] = useState(() => new Set())
   const stopRef = useRef(null)
 
   // Edge-trigger the "in tune!" chime: fire once when a string settles in tune,
   // then arm again only after it drifts back out.
   const tunedRef = useRef(false)
+  const holdRef = useRef(null)
 
   const start = async () => {
     setError(null)
@@ -30,12 +34,15 @@ export default function Tuner() {
     setActive(false)
     setPitch(null)
     tunedRef.current = false
+    if (holdRef.current) { clearTimeout(holdRef.current); holdRef.current = null }
+    setCompleted(new Set())
   }
 
   useEffect(() => () => stopRef.current?.(), [])
 
   const cents = pitch?.cents ?? 0
   const inTune = pitch?.inTune ?? false
+  const nearName = pitch?.nearestString?.name ?? null
 
   // Chime + re-arm logic.
   useEffect(() => {
@@ -47,18 +54,37 @@ export default function Tuner() {
     }
   }, [inTune, cents])
 
+  // Latch a string as "completed" once it's held in tune for ~0.5 s.
+  useEffect(() => {
+    if (inTune && nearName && !completed.has(nearName)) {
+      if (!holdRef.current) {
+        holdRef.current = setTimeout(() => {
+          setCompleted((prev) => new Set(prev).add(nearName))
+          holdRef.current = null
+        }, 500)
+      }
+    } else if (holdRef.current) {
+      clearTimeout(holdRef.current)
+      holdRef.current = null
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inTune, nearName])
+
   // Cents → position on the ±50¢ strip.
   const pos = Math.max(-50, Math.min(50, cents))
   const pct = 50 + (pos / 50) * 50
 
   return (
     <div className="glass p-6 sm:p-8 flex flex-col items-center">
-      <div className="flex items-center justify-between w-full mb-2">
-        <div>
+      <div className="flex items-start justify-between gap-4 w-full mb-2">
+        <div className="min-w-0">
           <h3 className="font-bold text-lg">Guitar Tuner</h3>
-          <p className="text-xs text-white/40">Pluck a string — we listen and show you exactly how to tune it.</p>
+          <p className="text-xs text-white/40">Pluck a string — we listen and show you exactly how to tune it. Tap a letter to hear that open string.</p>
         </div>
-        <button onClick={active ? stop : start} className={active ? 'btn-ghost' : 'btn-primary'}>
+        <button
+          onClick={active ? stop : start}
+          className={`${active ? 'btn-ghost' : 'btn-primary'} shrink-0 whitespace-nowrap`}
+        >
           {active ? '■ Stop' : '● Start'}
         </button>
       </div>
@@ -67,7 +93,7 @@ export default function Tuner() {
 
       {/* Headstock visualization */}
       <div className="w-full mt-2">
-        <Headstock pitch={pitch} active={active} inTune={inTune} />
+        <Headstock pitch={pitch} active={active} inTune={inTune} completed={completed} />
       </div>
 
       {/* Readout */}
@@ -109,7 +135,7 @@ export default function Tuner() {
             <motion.div
               className="absolute top-1/2 w-4 h-4 rounded-full -translate-x-1/2 -translate-y-1/2"
               animate={{ left: `${pct}%` }}
-              transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+              transition={{ type: 'tween', duration: 0.1, ease: 'linear' }}
               style={{
                 background: inTune ? '#34d399' : '#a78bfa',
                 boxShadow: `0 0 12px ${inTune ? '#34d399' : '#8b5cf6'}`,

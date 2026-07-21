@@ -4,6 +4,32 @@
 
 :root {
   color-scheme: dark;
+
+  /* ---- Fretwork design tokens (dark) ---- */
+  --gt-bg: #0b0b0e;
+  --gt-bg2: #111117;
+  --gt-panel: #16161c;
+  --gt-panel-hi: #1e1e26;
+  --gt-sunk: #08080b;
+  --gt-text: #f3f3f6;
+  --gt-muted: #9a9aa7;
+  --gt-faint: #5f5f6b;
+  --gt-border: #262630;
+  --gt-border-hi: #34343f;
+  --gt-accent: oklch(0.66 0.2 292);
+  --gt-accent2: oklch(0.72 0.19 292);
+  --gt-accent-soft: oklch(0.66 0.2 292 / 0.16);
+  --gt-mint: oklch(0.83 0.14 168);
+  --gt-rose: oklch(0.72 0.19 12);
+  --gt-amber: oklch(0.82 0.14 78);
+  --gt-glow: 0 0 0 1px oklch(0.66 0.2 292 / 0.5), 0 10px 34px oklch(0.66 0.2 292 / 0.32);
+  --gt-mesh-opacity: 1;
+  --gt-glow-cursor-alpha: 0.13;
+
+  /* Chord-diagram ink (frets, strings, markers) — theme aware. */
+  --dgm-line: rgba(255, 255, 255, 0.22);
+  --dgm-string: rgba(255, 255, 255, 0.3);
+  --dgm-mark: rgba(255, 255, 255, 0.55);
 }
 
 * {
@@ -20,77 +46,26 @@ body {
   margin: 0;
   background: #08060f;
   color: #ece9f5;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
 }
 
-/* ============================ LIGHT THEME ============================ */
-/* Retrofit: the app is dark-first, so light mode remaps the pervasive
-   white-on-dark utilities to dark-on-light. Immersive dark areas (the
-   Magic Chords studio) opt back out with data-theme="dark" on their root. */
-:root[data-theme='light'] { color-scheme: light; }
-[data-theme='light'] body { background: #eef0f7; color: #1c1730; }
-[data-theme='light'] .bg-ink-900 { background: #eef0f7 !important; }
-[data-theme='light'] .glass { background: rgba(255, 255, 255, 0.74); border-color: rgba(20, 18, 45, 0.1); box-shadow: 0 10px 34px -14px rgba(40, 25, 80, 0.22); }
-[data-theme='light'] .glass-soft { background: rgba(255, 255, 255, 0.6); border-color: rgba(20, 18, 45, 0.09); }
-[data-theme='light'] .chip { background: rgba(20, 18, 45, 0.04); border-color: rgba(20, 18, 45, 0.12); }
-[data-theme='light'] .text-white { color: #1c1730; }
-[data-theme='light'] .text-white\/90 { color: rgba(28, 23, 48, 0.92); }
-[data-theme='light'] .text-white\/85 { color: rgba(28, 23, 48, 0.88); }
-[data-theme='light'] .text-white\/80 { color: rgba(28, 23, 48, 0.84); }
-[data-theme='light'] .text-white\/75 { color: rgba(28, 23, 48, 0.8); }
-[data-theme='light'] .text-white\/70 { color: rgba(28, 23, 48, 0.74); }
-[data-theme='light'] .text-white\/60 { color: rgba(28, 23, 48, 0.66); }
-[data-theme='light'] .text-white\/55 { color: rgba(28, 23, 48, 0.62); }
-[data-theme='light'] .text-white\/50 { color: rgba(28, 23, 48, 0.58); }
-[data-theme='light'] .text-white\/45 { color: rgba(28, 23, 48, 0.54); }
-[data-theme='light'] .text-white\/40 { color: rgba(28, 23, 48, 0.52); }
-[data-theme='light'] .text-white\/35 { color: rgba(28, 23, 48, 0.48); }
-[data-theme='light'] .text-white\/30 { color: rgba(28, 23, 48, 0.45); }
-[data-theme='light'] .text-white\/25 { color: rgba(28, 23, 48, 0.4); }
-[data-theme='light'] .text-white\/20 { color: rgba(28, 23, 48, 0.36); }
-[data-theme='light'] .bg-white\/5 { background-color: rgba(20, 18, 45, 0.04); }
-[data-theme='light'] .bg-white\/10 { background-color: rgba(20, 18, 45, 0.06); }
-[data-theme='light'] .bg-white\/15 { background-color: rgba(20, 18, 45, 0.09); }
-[data-theme='light'] .bg-white\/20 { background-color: rgba(20, 18, 45, 0.11); }
-[data-theme='light'] .bg-white\/\[0\.06\] { background-color: rgba(20, 18, 45, 0.05); }
-[data-theme='light'] .bg-white\/\[0\.04\] { background-color: rgba(20, 18, 45, 0.04); }
-[data-theme='light'] .bg-white\/\[0\.035\] { background-color: rgba(20, 18, 45, 0.035); }
-[data-theme='light'] .bg-white\/\[0\.03\] { background-color: rgba(20, 18, 45, 0.03); }
-[data-theme='light'] .bg-white\/\[0\.08\] { background-color: rgba(20, 18, 45, 0.06); }
-[data-theme='light'] .bg-white\/\[0\.07\] { background-color: rgba(20, 18, 45, 0.055); }
-[data-theme='light'] .bg-white\/\[0\.015\] { background-color: rgba(20, 18, 45, 0.02); }
-[data-theme='light'] .border-white\/5 { border-color: rgba(20, 18, 45, 0.07); }
-[data-theme='light'] .border-white\/10 { border-color: rgba(20, 18, 45, 0.1); }
-[data-theme='light'] .border-white\/15 { border-color: rgba(20, 18, 45, 0.12); }
-[data-theme='light'] .border-white\/20 { border-color: rgba(20, 18, 45, 0.14); }
-[data-theme='light'] .bg-black\/30, [data-theme='light'] .bg-black\/40 { background-color: rgba(255, 255, 255, 0.65); }
-
-/* Restore dark inside opt-out subtrees (e.g. the Magic Chords studio). Placed
-   AFTER the light block so equal-specificity source order keeps them dark. */
-[data-theme='light'] [data-theme='dark'] .glass { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.1); box-shadow: none; }
-[data-theme='light'] [data-theme='dark'] .glass-soft { background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.08); }
-[data-theme='light'] [data-theme='dark'] .chip { background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.1); }
-[data-theme='light'] [data-theme='dark'] .text-white { color: #fff; }
-[data-theme='light'] [data-theme='dark'] .text-white\/90 { color: rgba(255, 255, 255, 0.9); }
-[data-theme='light'] [data-theme='dark'] .text-white\/80 { color: rgba(255, 255, 255, 0.8); }
-[data-theme='light'] [data-theme='dark'] .text-white\/70 { color: rgba(255, 255, 255, 0.7); }
-[data-theme='light'] [data-theme='dark'] .text-white\/60 { color: rgba(255, 255, 255, 0.6); }
-[data-theme='light'] [data-theme='dark'] .text-white\/55 { color: rgba(255, 255, 255, 0.55); }
-[data-theme='light'] [data-theme='dark'] .text-white\/50 { color: rgba(255, 255, 255, 0.5); }
-[data-theme='light'] [data-theme='dark'] .text-white\/45 { color: rgba(255, 255, 255, 0.45); }
-[data-theme='light'] [data-theme='dark'] .text-white\/40 { color: rgba(255, 255, 255, 0.4); }
-[data-theme='light'] [data-theme='dark'] .border-white\/10 { border-color: rgba(255, 255, 255, 0.1); }
-[data-theme='light'] [data-theme='dark'] .bg-black\/30, [data-theme='light'] [data-theme='dark'] .bg-black\/40 { background-color: rgba(0, 0, 0, 0.4); }
+/* Display / heading font from the Fretwork handoff. */
+.font-display {
+  font-family: 'Bricolage Grotesque', 'Space Grotesk', system-ui, sans-serif;
+}
 
 /* Frosted glass surface */
 @layer components {
+  /* Blur radius is kept moderate (16px / 10px) on purpose — backdrop-blur is one
+     of the most expensive effects to composite, and these surfaces are used all
+     over the app, so oversized radii (40px) made scrolling/cursor motion janky. */
   .glass {
-    @apply bg-white/[0.06] backdrop-blur-2xl border border-white/10 rounded-3xl shadow-glass;
+    @apply bg-white/[0.06] backdrop-blur-[16px] border border-white/10 rounded-3xl shadow-glass;
   }
   .glass-soft {
-    @apply bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] rounded-2xl;
+    @apply bg-white/[0.04] backdrop-blur-[10px] border border-white/[0.08] rounded-2xl;
   }
   .chip {
     @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium
@@ -157,4 +132,223 @@ input[type='range']::-moz-range-thumb {
 
 .text-balance {
   text-wrap: balance;
+}
+
+/* ==================================================================== */
+/* Fretwork handoff — keyframes, gradient mesh, glow cursor, menu button */
+/* ==================================================================== */
+
+@keyframes gt-pluck {
+  0% { transform: translate(-90px, -50%); opacity: 0; }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { transform: translate(1180px, -50%); opacity: 0; }
+}
+@keyframes gt-notefloat {
+  0% { opacity: 0; transform: translateY(6px) scale(0.9); }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-26px) scale(1.05); }
+}
+@keyframes gt-drift {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(-50%, 0); }
+}
+@keyframes gt-eqbar {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1); }
+}
+@keyframes gt-itemin {
+  0% { opacity: 0; transform: translateY(18px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes gt-reveal {
+  0% { opacity: 0; transform: translateY(22px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes gt-shimmer {
+  0% { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+@keyframes gt-menuin {
+  0% { opacity: 0; transform: scale(0.98); }
+  100% { opacity: 1; transform: scale(1); }
+}
+/* Nav icon micro-animations (play on hover) */
+@keyframes gt-ic-capo { 0%,100% { transform: translateY(0); } 50% { transform: translateY(2px); } }
+@keyframes gt-ic-note { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes gt-ic-vibe { 0%,100% { transform: translateX(0); } 50% { transform: translateX(1.3px); } }
+@keyframes gt-ic-sweep { 0% { transform: rotate(-34deg); } 50% { transform: rotate(34deg); } 100% { transform: rotate(-34deg); } }
+@keyframes gt-ic-hands { 0% { transform: rotate(-20deg); } 50% { transform: rotate(20deg); } 100% { transform: rotate(-20deg); } }
+/* Door swings open then eases shut, on a loop while hovered (hinge = left edge). */
+@keyframes gt-ic-door { 0%, 100% { transform: scaleX(1); } 50% { transform: scaleX(0.14); } }
+@keyframes gt-ic-bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+/* Both hands rise and fall (offset by half a cycle) — "playing in the air". */
+@keyframes gt-ic-handbob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2.6px); } }
+/* Each string bows gently left↔right as a low-curvature standing wave. */
+@keyframes gt-strum-s1 { 0%, 100% { d: path('M6 4 Q7.5 12 6 20'); } 50% { d: path('M6 4 Q4.5 12 6 20'); } }
+@keyframes gt-strum-s2 { 0%, 100% { d: path('M10 4 Q11.5 12 10 20'); } 50% { d: path('M10 4 Q8.5 12 10 20'); } }
+@keyframes gt-strum-s3 { 0%, 100% { d: path('M14 4 Q15.5 12 14 20'); } 50% { d: path('M14 4 Q12.5 12 14 20'); } }
+@keyframes gt-strum-s4 { 0%, 100% { d: path('M18 4 Q19.5 12 18 20'); } 50% { d: path('M18 4 Q16.5 12 18 20'); } }
+@keyframes gt-eq { 0%, 100% { transform: scaleY(0.35); } 50% { transform: scaleY(1); } }
+@keyframes gt-spin { to { transform: rotate(360deg); } }
+@keyframes gt-fadeup { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+/* Gradient mesh + dot grid — sits behind the existing ambient notes. */
+.gt-mesh {
+  position: absolute;
+  inset: 0;
+  opacity: var(--gt-mesh-opacity, 1);
+  background:
+    radial-gradient(45vw 45vw at 12% 8%, oklch(0.55 0.2 292 / 0.28), transparent 60%),
+    radial-gradient(42vw 42vw at 90% 96%, oklch(0.62 0.14 210 / 0.22), transparent 60%),
+    radial-gradient(34vw 34vw at 62% 44%, oklch(0.7 0.16 20 / 0.14), transparent 60%);
+}
+.gt-dotgrid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.4;
+  background-image: radial-gradient(var(--gt-border) 0.5px, transparent 0.5px);
+  background-size: 22px 22px;
+}
+
+/* Glow cursor — imperatively appended element follows the pointer. */
+.gt-glow-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 440px;
+  height: 440px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 30;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, oklch(0.66 0.2 292 / var(--gt-glow-cursor-alpha, 0.13)), transparent 60%);
+  will-change: transform;
+}
+
+/* Gradient "toolkit" word in the hero headline. */
+.gt-grad-text {
+  background: linear-gradient(105deg, var(--gt-accent2), oklch(0.82 0.13 200), var(--gt-mint));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* Top-nav tab buttons — theme-token colours so light-mode hover stays legible
+   (the previous hover:text-white turned invisible on the light background). */
+.gt-navbtn { color: var(--gt-muted); }
+.gt-navbtn:hover { color: var(--gt-text); }
+.gt-navbtn[data-active='true'] { color: #fff; }
+
+/* Hide the scrollbar on the overlay menu (the styled purple bar looked like a
+   stray vertical line) while keeping it scrollable. */
+.gt-noscroll { scrollbar-width: none; -ms-overflow-style: none; }
+.gt-noscroll::-webkit-scrollbar { width: 0; height: 0; display: none; }
+
+/* Animated equalizer bars on the Audio → Chords card. */
+.gt-eq-bar {
+  width: 5px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--gt-accent), var(--gt-mint));
+  transform-origin: bottom;
+  animation: gt-eq 0.9s ease-in-out infinite;
+}
+
+/* ---- Unified Fretwork button system ----------------------------------
+   One consistent language for every CTA in the app chrome / Fretwork panels:
+   PRIMARY = solid accent + white text + glow; GHOST = panel surface + border.
+   Size is set per-use via height/padding utility or inline style. */
+.gt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 14px;
+  white-space: nowrap;
+  transition: transform 0.14s ease, background 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+.gt-btn:active { transform: scale(0.97); }
+.gt-btn-primary {
+  border: none;
+  background: var(--gt-accent);
+  color: #fff;
+  box-shadow: var(--gt-glow);
+}
+.gt-btn-primary:hover { transform: translateY(-2px); background: var(--gt-accent2); }
+.gt-btn-ghost {
+  border: 1px solid var(--gt-border-hi);
+  background: var(--gt-panel);
+  color: var(--gt-text);
+}
+.gt-btn-ghost:hover { border-color: var(--gt-accent); }
+/* Ghost variant that reads on the dark Magic Chords showcase card. */
+.gt-btn-ghost-onDark {
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+.gt-btn-ghost-onDark:hover { border-color: rgba(255, 255, 255, 0.55); background: rgba(255, 255, 255, 0.14); }
+
+/* Home module cards + CTAs. */
+.gt-card { transition: transform 0.5s cubic-bezier(0.16, 0.84, 0.44, 1), border-color 0.3s, box-shadow 0.4s; }
+.gt-card:hover { transform: translateY(-7px); border-color: var(--gt-border-hi); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4); }
+
+@media (max-width: 700px) {
+  .gt-module-grid > .gt-card { grid-column: span 12 / span 12 !important; }
+}
+
+/* Overlay menu row hover — label slides right, icon lights up accent. */
+.gt-mi-label { transition: transform 0.25s cubic-bezier(0.16, 0.84, 0.44, 1); transform-origin: left center; }
+.gt-mi:hover .gt-mi-label { transform: translateX(12px); }
+.gt-mi:hover .gt-mi-ic { color: var(--gt-accent); }
+
+.gt-menu-btn:hover {
+  border-color: var(--gt-accent) !important;
+  box-shadow: var(--gt-glow);
+}
+
+/* Equalizer MENU button bars. */
+.gt-eqbar {
+  width: 3px;
+  border-radius: 2px;
+  transform-origin: center bottom;
+  animation: gt-eqbar 1.1s ease-in-out infinite;
+}
+
+/* Icon hover animations — any ancestor with .gt-ico-host plays them. */
+.gt-ico-host:hover .anim-door { animation: gt-ic-door 0.9s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+.gt-ico-host:hover .anim-capo { animation: gt-ic-capo 0.6s ease-in-out; }
+.gt-ico-host:hover .anim-sheet { animation: gt-ic-note 0.6s ease-in-out; }
+/* Strings oscillate as gentle low-curvature waves, in a slight travelling phase. */
+.gt-ico-host:hover .anim-strum .s1 { animation: gt-strum-s1 1.1s ease-in-out infinite; }
+.gt-ico-host:hover .anim-strum .s2 { animation: gt-strum-s2 1.1s ease-in-out infinite 0.09s; }
+.gt-ico-host:hover .anim-strum .s3 { animation: gt-strum-s3 1.1s ease-in-out infinite 0.18s; }
+.gt-ico-host:hover .anim-strum .s4 { animation: gt-strum-s4 1.1s ease-in-out infinite 0.27s; }
+.gt-ico-host:hover .anim-tuner { animation: gt-ic-sweep 0.9s ease-in-out; }
+/* Two hands rise and fall out of phase (index fingers pointing up). */
+.gt-ico-host:hover .anim-magic .hand { animation: gt-ic-handbob 0.85s ease-in-out infinite; }
+.gt-ico-host:hover .anim-magic .hand2 { animation: gt-ic-handbob 0.85s ease-in-out infinite 0.42s; }
+.gt-ico-host:hover .anim-audio rect { animation: gt-eqbar 0.7s ease-in-out infinite; }
+.gt-ico-host:hover .anim-audio rect:nth-child(2) { animation-delay: 0.12s; }
+.gt-ico-host:hover .anim-audio rect:nth-child(3) { animation-delay: 0.24s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gt-ico-host:hover [class^='anim-'],
+  .gt-ico-host:hover [class^='anim-'] * { animation: none !important; }
+  .gt-mesh,
+  .gt-dotgrid { animation: none !important; }
+  .gt-eqbar,
+  .gt-eq-bar,
+  .gt-glow-cursor,
+  [class*='gt-ic-'] { animation: none !important; }
+  .gt-anim-pluck,
+  .gt-anim-notefloat,
+  .gt-anim-drift,
+  .gt-anim-itemin,
+  .gt-anim-reveal { animation: none !important; opacity: 1 !important; transform: none !important; }
 }

@@ -73,7 +73,10 @@
       "Bash(grep -oaE \".{0,40}chordOscs\\\\.push.{0,40}\" gj2.html)",
       "Bash(grep -oaE \".{0,30}\\(< *[0-9]+ *; *i\\\\+\\\\+|Array\\\\.from|new Array\\).{0,40}chordOsc.{0,10}\" gj2.html)",
       "Bash(perl -0777 -ne 'print $1 if /\\(sliceToRootMidi\\\\s*\\\\\\(i\\\\\\)\\\\s*\\\\{.*?\\\\n\\\\s*\\\\}\\)/s' gj2.html)",
-      "Bash(grep -oaE \"\\(NOTE_NAMES|ROOTS|noteNames|labels\\)\\\\s*=\\\\s*\\\\[[^\\\\]]{0,80}\\\\]\" gj2.html)"
+      "Bash(grep -oaE \"\\(NOTE_NAMES|ROOTS|noteNames|labels\\)\\\\s*=\\\\s*\\\\[[^\\\\]]{0,80}\\\\]\" gj2.html)",
+      "Bash(npx vite *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5199/)",
+      "Bash(pkill -f \"vite --port 5199\")"
     ]
   }
 }

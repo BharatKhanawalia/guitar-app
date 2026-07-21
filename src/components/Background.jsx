@@ -19,6 +19,11 @@ export default function Background({ theme = 'dark' }) {
         }}
       />
 
+      {/* Fretwork gradient mesh + dot grid — sits behind the drifting blobs and
+          the ambient floating-notes canvas. Opacity tracks the active theme. */}
+      <div className="gt-mesh" />
+      <div className="gt-dotgrid" />
+
       {/* Drifting color blobs */}
       <motion.div
         className="absolute -top-1/4 -left-1/4 h-[70vh] w-[70vh] rounded-full blur-[120px]"
