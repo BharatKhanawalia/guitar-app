@@ -1,5 +1,6 @@
 import * as Tone from 'tone'
 import { Chord, Scale, Note } from 'tonal'
+import { withTimeout } from './audioUnlock'
 
 /**
  * arSynth.js — the AR Studio instrument engine.
@@ -232,7 +233,11 @@ export async function boot() {
   if (ready) return
   if (booting) return booting
   booting = (async () => {
-    await Tone.start()
+    // Never await a resume that may never settle: outside a user gesture the
+    // browser leaves ctx.resume() pending forever, which would latch `booting`
+    // and stall every caller behind it (see ./audioUnlock.js). The studio is
+    // always entered by a click, so this normally resolves at once.
+    await withTimeout(Tone.start().catch(() => {}), 4000)
     limiter = new Tone.Limiter(-1).toDestination()
     meter = new Tone.Meter({ smoothing: 0.85 }) // real output level (dB) for the HUD
     limiter.connect(meter)

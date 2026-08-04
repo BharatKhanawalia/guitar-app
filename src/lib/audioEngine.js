@@ -1,6 +1,7 @@
 import * as Tone from 'tone'
 import { Chord, Note } from 'tonal'
 import { parseChord } from './chordTheory'
+import { isAudioAllowed, isAudioRunning, withTimeout } from './audioUnlock'
 
 /**
  * audioEngine.js — CapoFlow's sound.
@@ -46,11 +47,26 @@ let masterAnalyser = null // taps all output buses → level metering / audio te
 let booting = null
 let ready = false
 
+/**
+ * Build the audio graph, resuming the context first.
+ *
+ * Returns TRUE only when audio will actually be heard. Callers must bail on
+ * false instead of scheduling: before the user's first gesture the context is
+ * suspended, its clock is frozen, and anything scheduled would pile up and fire
+ * as one burst whenever the context later resumes. See ./audioUnlock.js.
+ */
 async function boot() {
-  if (ready) return
-  if (booting) return booting
+  if (!isAudioAllowed()) return false // no gesture yet → drop the sound, never queue it
+  if (ready) return isAudioRunning()
+  if (booting) {
+    await booting
+    return ready && isAudioRunning()
+  }
   booting = (async () => {
-    await Tone.start()
+    // We're inside/just after a gesture, so this resume can settle. The timeout
+    // is belt-and-braces: a resume that stalls anyway must not latch `booting`
+    // pending forever — that is what turned every early sound into a queue.
+    await withTimeout(Tone.start().catch(() => {}), 4000)
 
     /* --- Melodic chain (restored original tone) --------------------- */
     const reverb = new Tone.Reverb({ decay: 1.6, wet: 0.22 }).toDestination()
@@ -151,8 +167,15 @@ async function boot() {
 
     ready = true
     samplerReady = loadSampler() // kick off the real-sample upgrade; awaited by pitched voices
-  })()
-  return booting
+  })().catch((err) => {
+    // A failed boot must not poison every later call — clear the latch so the
+    // next gesture gets a fresh attempt.
+    console.warn('audioEngine boot failed:', err)
+    booting = null
+    ready = false
+  })
+  await booting
+  return ready && isAudioRunning()
 }
 
 /**
@@ -160,9 +183,10 @@ async function boot() {
  * use this instead of boot() so the VERY FIRST chord already plays the real
  * guitar samples — never the FM-synth fallback while samples are still loading.
  * If no samples are installed, samplerReady resolves fast and we use the synth.
+ * Like boot(), returns false when the sound must be dropped.
  */
 async function ensureSamples() {
-  await boot()
+  if (!(await boot())) return false
   if (samplerReady) {
     try {
       await samplerReady
@@ -170,6 +194,7 @@ async function ensureSamples() {
       /* sample load failed → fall back to the synth, nothing else to do */
     }
   }
+  return isAudioRunning()
 }
 
 /** RMS of the strumming engine's output (0..1) — metering + audio self-tests. */
@@ -241,7 +266,7 @@ export function voiceChord(symbol) {
 
 /** Strum a chord low→high (down) or high→low (up) with a strum micro-delay. */
 export async function playChord(symbol, { direction = 'down', velocity = 0.85 } = {}) {
-  await ensureSamples()
+  if (!(await ensureSamples())) return
   const notes = voiceChord(symbol)
   if (!notes.length) return
   const ordered = direction === 'up' ? [...notes].reverse() : notes
@@ -263,7 +288,7 @@ export async function playChord(symbol, { direction = 'down', velocity = 0.85 } 
  */
 export async function playChordShifted(symbol, semitones = 0, { direction = 'down', velocity = 0.85 } = {}) {
   if (!semitones) return playChord(symbol, { direction, velocity })
-  await ensureSamples()
+  if (!(await ensureSamples())) return
   const notes = voiceChord(symbol)
     .map((n) => { const m = Note.midi(n); return m == null ? null : Note.fromMidi(m + semitones) })
     .filter(Boolean)
@@ -288,7 +313,7 @@ let heldNotes = []
 
 /** Strum a chord and HOLD it (no auto-release). Replaces any prior held chord. */
 export async function startChord(symbol, { direction = 'down', velocity = 0.8 } = {}) {
-  await ensureSamples()
+  if (!(await ensureSamples())) return
   const notes = voiceChord(symbol)
   if (!notes.length) return
   releaseChord() // cut the previous sustained chord first
@@ -320,7 +345,7 @@ export function releaseChord() {
 
 /** Play a single pitched note (fretboard taps, references). */
 export async function playNote(note, dur = '4n', velocity = 0.9) {
-  await ensureSamples()
+  if (!(await ensureSamples())) return
   const src = usingSampler && sampler ? sampler : synth
   src.triggerAttackRelease(note, dur, Tone.now() + 0.01, velocity)
 }
@@ -332,7 +357,7 @@ export async function playNote(note, dur = '4n', velocity = 0.9) {
  * a wider stagger reads clearly as a hand sweeping the strings.
  */
 export async function playChuck({ up = false, velocity = 0.9, count = null, time = 0 } = {}) {
-  await boot()
+  if (!(await boot())) return
   const t = Tone.now() + 0.005 + Math.max(0, time) // `time` = humanized micro-shift
   let strings = up
     ? ['E4', 'B3', 'G3', 'D3'] // up: lighter, top strings, high→low
@@ -356,7 +381,7 @@ export async function playAcousticStrum(
   symbol,
   { up = false, velocity = 0.85, strings = null, sustain = null, spread = null, time = 0 } = {},
 ) {
-  await ensureSamples()
+  if (!(await ensureSamples())) return
   const voiced = voiceChord(symbol)
   if (!voiced.length) return
   // RHYTHM VOICING: catch only the TOP strings — dropping the heavy bass keeps a
@@ -384,7 +409,7 @@ export async function playAcousticStrum(
 
 /** Short muted string scratch — the ✕ in "Play Chord" mode (dead-string rake). */
 export async function playStringMute({ velocity = 0.7, time = 0 } = {}) {
-  await boot()
+  if (!(await boot())) return
   const t = Tone.now() + 0.005 + Math.max(0, time)
   const strings = ['A2', 'D3', 'G3', 'B3']
   strings.forEach((n, i) => chuckVoices[i % chuckVoices.length].triggerAttack(n, t + i * 0.008, velocity))
@@ -393,7 +418,7 @@ export async function playStringMute({ velocity = 0.7, time = 0 } = {}) {
 
 /** Brief percussive "thumb slap" on the body/strings — the ✕ in muted mode. */
 export async function playThumbSlap({ velocity = 0.95, time = 0 } = {}) {
-  await boot()
+  if (!(await boot())) return
   const t = Tone.now() + 0.005 + Math.max(0, time)
   slap.triggerAttackRelease('B1', 0.12, t, velocity)
   slapNoise.triggerAttackRelease(0.03, t, velocity * 0.75)
@@ -401,7 +426,7 @@ export async function playThumbSlap({ velocity = 0.95, time = 0 } = {}) {
 
 /** Short "you're in tune" bell (perfect-fifth ding). */
 export async function playTunedChime() {
-  await boot()
+  if (!(await boot())) return
   const t = Tone.now() + 0.01
   chime.triggerAttackRelease('E5', 0.18, t, 0.9)
   chime.triggerAttackRelease('B5', 0.5, t + 0.12, 0.8)
