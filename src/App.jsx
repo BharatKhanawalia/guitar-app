@@ -260,7 +260,7 @@ function SiteFooter() {
         </div>
       </div>
       <div className="text-center text-[11px] text-white/25 mt-8">
-        © {2026} CapoFlow · Made for guitarists everywhere.
+        © {2026} CapoFlow · Made for guitarists everywhere. All rights reserved.
       </div>
     </footer>
   )

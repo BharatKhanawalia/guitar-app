@@ -10,3 +10,8 @@ yarn-error.log*
 
 # Local ONNX model working-copy (Node test harness fetches/uses it; browser streams from HF CDN)
 models/
+
+# Reference songs used to tune the BPM / chord-detection heuristics. Kept out of
+# git AND out of public/ — they are commercial recordings, and anything under
+# public/ is served verbatim from the deployed domain.
+fixtures/

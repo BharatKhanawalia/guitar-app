@@ -1,0 +1,24 @@
+Copyright (c) 2026 Bharat Khanawalia. All rights reserved.
+
+CapoFlow — including its source code, design, visual identity, copy, and the
+tuned behaviour of its audio, chord-detection and capo-ranking logic — is
+proprietary and confidential.
+
+No permission is granted to copy, modify, distribute, publish, sublicense, or
+create derivative works from any part of this project, in whole or in part, by
+any means, without the prior written consent of the copyright holder.
+
+Access to a deployed build, a preview link, or the source in any form does not
+grant any licence or right of reuse. Viewing the site for evaluation or to give
+feedback is permitted; republishing it, or any part of it, is not.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+
+---
+
+Third-party components (React, Tone.js, Tonal, MediaPipe, ONNX Runtime,
+Transformers.js, and the other dependencies listed in package.json) remain the
+property of their respective authors and are used under their own licences.
+Nothing above restricts rights you hold in those components.
