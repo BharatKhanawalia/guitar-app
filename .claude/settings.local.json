@@ -76,7 +76,11 @@
       "Bash(grep -oaE \"\\(NOTE_NAMES|ROOTS|noteNames|labels\\)\\\\s*=\\\\s*\\\\[[^\\\\]]{0,80}\\\\]\" gj2.html)",
       "Bash(npx vite *)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5199/)",
-      "Bash(pkill -f \"vite --port 5199\")"
+      "Bash(pkill -f \"vite --port 5199\")",
+      "Bash(python3 -)",
+      "Bash(git stash *)",
+      "Bash(git ls-files *)",
+      "Bash(git push *)"
     ]
   }
 }
