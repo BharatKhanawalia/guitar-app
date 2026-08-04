@@ -4,7 +4,9 @@
  * floating notes, a frozen bottom marquee, the six module cards, and a stats
  * strip. Colours, sizes and animation timings mirror the prototype.
  */
+import { useState } from 'react'
 import StringBand from './StringBand'
+import useAudioUnlocked from '../hooks/useAudioUnlocked'
 
 const NOTES = [
   { l: 15, t: 24, sz: 26, c: 'var(--gt-accent2)', dl: 0, du: 7.5, g: '♪' },
@@ -36,6 +38,61 @@ const MARQUEE = [
   'CAPO CALCULATOR', 'SHEET TRANSPOSER', 'STRUMMING STUDIO', 'GUITAR TUNER', 'MAGIC CHORDS',
   'AUDIO → CHORDS', 'ZERO LATENCY', 'FULLY PRIVATE', 'REAL AUDIO', 'NO ACCOUNTS',
 ]
+
+/**
+ * Micro-label above the string band. Doubles as the answer to the one silent
+ * moment we can't design away: browsers refuse ALL audio until the visitor's
+ * first click, and a hover isn't one — so until then this asks for the click
+ * rather than letting the strings look broken. Styled as the same mono eyebrow
+ * used for the section labels, one notch smaller, so it reads as a caption.
+ */
+function StringHint() {
+  const unlocked = useAudioUnlocked()
+  const [touch] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia?.('(hover: none)').matches,
+  )
+  const dot = unlocked ? 'var(--gt-mint)' : 'var(--gt-amber)'
+  const text = unlocked
+    ? touch
+      ? 'Drag a string to play'
+      : 'Hover the strings to play'
+    : touch
+      ? 'Tap anywhere to enable sound'
+      : 'Click anywhere to enable sound'
+
+  return (
+    <div
+      className="flex justify-center gt-anim-reveal"
+      style={{ marginBottom: 'clamp(6px,1.2vh,14px)', animation: 'gt-reveal 1.1s ease both' }}
+    >
+      <span
+        className="inline-flex items-center font-mono"
+        style={{
+          gap: 8,
+          fontSize: 10,
+          letterSpacing: '0.16em',
+          textTransform: 'uppercase',
+          color: 'var(--gt-muted)',
+          opacity: unlocked ? 0.55 : 0.85, // recedes once it's just a caption
+          transition: 'opacity 0.5s ease',
+          userSelect: 'none',
+        }}
+      >
+        <span
+          style={{
+            width: 5,
+            height: 5,
+            borderRadius: '50%',
+            background: dot,
+            boxShadow: `0 0 8px ${dot}`,
+            transition: 'background 0.5s ease, box-shadow 0.5s ease',
+          }}
+        />
+        {text}
+      </span>
+    </div>
+  )
+}
 
 export default function HomePage({ onOpen }) {
   return (
@@ -117,25 +174,25 @@ export default function HomePage({ onOpen }) {
         </div>
 
         {/* Neon string band (pluckable) + floating notes */}
-        <div
-          className="relative w-full"
-          style={{ maxWidth: 1120, margin: '0 auto', height: 'clamp(150px,20vw,220px)' }}
-        >
-          <StringBand />
-          {NOTES.map((n, i) => (
-            <span
-              key={i}
-              aria-hidden="true"
-              className="gt-anim-notefloat absolute"
-              style={{
-                left: `${n.l}%`, top: `${n.t}%`, fontSize: n.sz, color: n.c,
-                textShadow: `0 0 16px ${n.c}, 0 0 6px ${n.c}`, opacity: 0, pointerEvents: 'none',
-                animation: `gt-notefloat ${n.du}s ease-in-out ${n.dl}s infinite`,
-              }}
-            >
-              {n.g}
-            </span>
-          ))}
+        <div className="w-full" style={{ maxWidth: 1120, margin: '0 auto' }}>
+          <StringHint />
+          <div className="relative w-full" style={{ height: 'clamp(150px,20vw,220px)' }}>
+            <StringBand />
+            {NOTES.map((n, i) => (
+              <span
+                key={i}
+                aria-hidden="true"
+                className="gt-anim-notefloat absolute"
+                style={{
+                  left: `${n.l}%`, top: `${n.t}%`, fontSize: n.sz, color: n.c,
+                  textShadow: `0 0 16px ${n.c}, 0 0 6px ${n.c}`, opacity: 0, pointerEvents: 'none',
+                  animation: `gt-notefloat ${n.du}s ease-in-out ${n.dl}s infinite`,
+                }}
+              >
+                {n.g}
+              </span>
+            ))}
+          </div>
         </div>
       </section>
 

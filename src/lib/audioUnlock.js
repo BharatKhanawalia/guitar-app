@@ -18,6 +18,7 @@ import * as Tone from 'tone'
 
 let gestured = false
 let installed = false
+const waiters = new Set() // UI that wants to know the moment audio becomes possible
 
 // Every gesture kind, capture-phase, so we resume BEFORE React's own handlers
 // run — the click that asks for a chord also unlocks the context.
@@ -32,11 +33,37 @@ function ctxState() {
 }
 
 function onGesture() {
+  const first = !gestured
   gestured = true
+  if (first && waiters.size) {
+    const fns = [...waiters]
+    waiters.clear()
+    for (const fn of fns) {
+      try {
+        fn()
+      } catch {
+        /* a listener must never break the unlock */
+      }
+    }
+  }
   if (ctxState() === 'running') return
   // Fire-and-forget: we are inside the gesture task, the only moment the
   // browser honours a resume. Nothing awaits this promise.
   Tone.start().catch(() => {})
+}
+
+/**
+ * Call `fn` once audio is possible — immediately if it already is. Returns an
+ * unsubscribe. For UI that wants to say "click anywhere to enable sound" until
+ * the browser lets us make any.
+ */
+export function onAudioUnlock(fn) {
+  if (isAudioAllowed()) {
+    fn()
+    return () => {}
+  }
+  waiters.add(fn)
+  return () => waiters.delete(fn)
 }
 
 /**
